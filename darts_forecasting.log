@@ -1,0 +1,371 @@
+2025-08-29 22:45:23,295 - INFO - Running quick test with subset of models...
+2025-08-29 22:45:23,298 - INFO - Starting DARTS Stock Forecasting System...
+2025-08-29 22:45:23,298 - INFO - Data path: Data\covariaterawdata1.csv
+2025-08-29 22:45:23,298 - INFO - DARTS available: True
+2025-08-29 22:45:23,299 - INFO - === Data Loading and Preprocessing Phase ===
+2025-08-29 22:45:23,299 - INFO - Loading data from Data\covariaterawdata1.csv
+2025-08-29 22:45:23,310 - INFO - Loaded 506 rows of data
+2025-08-29 22:45:23,310 - INFO - Preprocessing data...
+2025-08-29 22:45:23,313 - INFO - Preprocessed data shape: (506, 21)
+2025-08-29 22:45:23,313 - INFO - === Custom Holiday Calendar and TimeSeries Creation Phase ===
+2025-08-29 22:45:23,314 - INFO - Creating custom holiday calendar...
+2025-08-29 22:45:23,340 - INFO - Created custom calendar with 18 holidays
+2025-08-29 22:45:23,341 - INFO - Converting to DARTS TimeSeries...
+2025-08-29 22:45:23,341 - ERROR - Error in TimeSeries creation: DartsTimeSeriesCreator.create_timeseries() takes 2 positional arguments but 3 were given
+2025-08-29 22:45:23,341 - ERROR - Pipeline failed with error: DartsTimeSeriesCreator.create_timeseries() takes 2 positional arguments but 3 were given
+2025-08-29 22:45:23,342 - ERROR - Traceback: Traceback (most recent call last):
+  File "X:\KiroProject2\main.py", line 396, in run_full_pipeline
+    timeseries, custom_freq = create_timeseries_with_calendar(processed_df, logger)
+                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "X:\KiroProject2\main.py", line 153, in create_timeseries_with_calendar
+    timeseries = ts_creator.create_timeseries(df, custom_freq)
+TypeError: DartsTimeSeriesCreator.create_timeseries() takes 2 positional arguments but 3 were given
+
+2025-08-29 22:45:52,236 - INFO - Running quick test with subset of models...
+2025-08-29 22:45:52,239 - INFO - Starting DARTS Stock Forecasting System...
+2025-08-29 22:45:52,240 - INFO - Data path: Data\covariaterawdata1.csv
+2025-08-29 22:45:52,241 - INFO - DARTS available: True
+2025-08-29 22:45:52,243 - INFO - === Data Loading and Preprocessing Phase ===
+2025-08-29 22:45:52,244 - INFO - Loading data from Data\covariaterawdata1.csv
+2025-08-29 22:45:52,255 - INFO - Loaded 506 rows of data
+2025-08-29 22:45:52,257 - INFO - Preprocessing data...
+2025-08-29 22:45:52,260 - INFO - Preprocessed data shape: (506, 21)
+2025-08-29 22:45:52,261 - INFO - === Custom Holiday Calendar and TimeSeries Creation Phase ===
+2025-08-29 22:45:52,263 - INFO - Creating custom holiday calendar...
+2025-08-29 22:45:52,290 - INFO - Created custom calendar with 18 holidays
+2025-08-29 22:45:52,292 - INFO - Converting to DARTS TimeSeries...
+2025-08-29 22:45:52,319 - INFO - Created TimeSeries with 506 points
+2025-08-29 22:45:52,320 - INFO - === Data Splitting and Scaling Phase ===
+2025-08-29 22:45:52,322 - INFO - Splitting data temporally...
+2025-08-29 22:45:52,323 - ERROR - Error in data splitting/scaling: DataSplitter.split_data() takes 2 positional arguments but 5 were given
+2025-08-29 22:45:52,324 - ERROR - Pipeline failed with error: DataSplitter.split_data() takes 2 positional arguments but 5 were given
+2025-08-29 22:45:52,326 - ERROR - Traceback: Traceback (most recent call last):
+  File "X:\KiroProject2\main.py", line 399, in run_full_pipeline
+    train_ts, val_ts, test_ts, scaler = split_and_scale_data(timeseries, CONFIG, logger)
+                                        ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "X:\KiroProject2\main.py", line 170, in split_and_scale_data
+    train_ts, val_ts, test_ts = splitter.split_data(
+                                ~~~~~~~~~~~~~~~~~~~^
+        timeseries,
+        ^^^^^^^^^^^
+    ...<2 lines>...
+        config['test_ratio']
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+TypeError: DataSplitter.split_data() takes 2 positional arguments but 5 were given
+
+2025-08-29 22:46:37,867 - INFO - Running quick test with subset of models...
+2025-08-29 22:46:37,868 - INFO - Starting DARTS Stock Forecasting System...
+2025-08-29 22:46:37,868 - INFO - Data path: Data\covariaterawdata1.csv
+2025-08-29 22:46:37,869 - INFO - DARTS available: True
+2025-08-29 22:46:37,869 - INFO - === Data Loading and Preprocessing Phase ===
+2025-08-29 22:46:37,869 - INFO - Loading data from Data\covariaterawdata1.csv
+2025-08-29 22:46:37,879 - INFO - Loaded 506 rows of data
+2025-08-29 22:46:37,879 - INFO - Preprocessing data...
+2025-08-29 22:46:37,882 - INFO - Preprocessed data shape: (506, 21)
+2025-08-29 22:46:37,882 - INFO - === Custom Holiday Calendar and TimeSeries Creation Phase ===
+2025-08-29 22:46:37,882 - INFO - Creating custom holiday calendar...
+2025-08-29 22:46:37,909 - INFO - Created custom calendar with 18 holidays
+2025-08-29 22:46:37,909 - INFO - Converting to DARTS TimeSeries...
+2025-08-29 22:46:37,935 - INFO - Created TimeSeries with 506 points
+2025-08-29 22:46:37,935 - INFO - === Data Splitting and Scaling Phase ===
+2025-08-29 22:46:37,936 - INFO - Splitting data temporally...
+2025-08-29 22:46:37,937 - INFO - Split sizes - Train: 354, Val: 76, Test: 76
+2025-08-29 22:46:37,937 - INFO - Scaling features...
+2025-08-29 22:46:37,965 - INFO - Data scaling completed
+2025-08-29 22:46:37,965 - INFO - === Target Creation Phase ===
+2025-08-29 22:46:37,965 - INFO - TargetCreator initialized with 5-day prediction horizon
+2025-08-29 22:46:37,965 - INFO - Creating targets with 5-day horizon
+2025-08-29 22:46:37,966 - ERROR - Error in target creation: Target column 'adjusted_close' not found. Available columns: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20']
+2025-08-29 22:46:37,966 - ERROR - Pipeline failed with error: Target column 'adjusted_close' not found. Available columns: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20']
+2025-08-29 22:46:37,968 - ERROR - Traceback: Traceback (most recent call last):
+  File "X:\KiroProject2\main.py", line 397, in run_full_pipeline
+    targets = create_targets(timeseries, CONFIG, logger)
+  File "X:\KiroProject2\main.py", line 191, in create_targets
+    targets = target_creator.create_targets(timeseries, "adjusted_close")
+  File "X:\KiroProject2\src\target_creator.py", line 63, in create_targets
+    raise ValueError(f"Target column '{target_column}' not found. Available columns: {available_columns}")
+ValueError: Target column 'adjusted_close' not found. Available columns: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20']
+
+2025-08-29 22:47:02,053 - INFO - Running quick test with subset of models...
+2025-08-29 22:47:02,054 - INFO - Starting DARTS Stock Forecasting System...
+2025-08-29 22:47:02,054 - INFO - Data path: Data\covariaterawdata1.csv
+2025-08-29 22:47:02,055 - INFO - DARTS available: True
+2025-08-29 22:47:02,055 - INFO - === Data Loading and Preprocessing Phase ===
+2025-08-29 22:47:02,055 - INFO - Loading data from Data\covariaterawdata1.csv
+2025-08-29 22:47:02,066 - INFO - Loaded 506 rows of data
+2025-08-29 22:47:02,067 - INFO - Preprocessing data...
+2025-08-29 22:47:02,069 - INFO - Preprocessed data shape: (506, 21)
+2025-08-29 22:47:02,070 - INFO - === Custom Holiday Calendar and TimeSeries Creation Phase ===
+2025-08-29 22:47:02,070 - INFO - Creating custom holiday calendar...
+2025-08-29 22:47:02,098 - INFO - Created custom calendar with 18 holidays
+2025-08-29 22:47:02,098 - INFO - Converting to DARTS TimeSeries...
+2025-08-29 22:47:02,125 - INFO - Created TimeSeries with 506 points
+2025-08-29 22:47:02,125 - INFO - === Data Splitting and Scaling Phase ===
+2025-08-29 22:47:02,125 - INFO - Splitting data temporally...
+2025-08-29 22:47:02,126 - INFO - Split sizes - Train: 354, Val: 76, Test: 76
+2025-08-29 22:47:02,126 - INFO - Scaling features...
+2025-08-29 22:47:02,154 - INFO - Data scaling completed
+2025-08-29 22:47:02,154 - INFO - === Target Creation Phase ===
+2025-08-29 22:47:02,154 - INFO - TargetCreator initialized with 5-day prediction horizon
+2025-08-29 22:47:02,155 - INFO - Creating targets with 5-day horizon
+2025-08-29 22:47:02,156 - INFO - Created targets: original length 506, target length 501
+2025-08-29 22:47:02,156 - INFO - Target column: 0_target_5d
+2025-08-29 22:47:02,156 - INFO - Created targets with 501 points
+2025-08-29 22:47:02,156 - INFO - === Model Factory and Training Phase ===
+2025-08-29 22:47:02,156 - INFO - Creating model instances...
+2025-08-29 22:47:02,157 - ERROR - ValueError: `training_length` (24) must be `>=input_chunk_length` (30).
+2025-08-29 22:47:02,196 - INFO - Created 6 models: ['TCNModel', 'TransformerModel', 'NBEATSModel', 'TFTModel', 'DLinearModel', 'NLinearModel']
+2025-08-29 22:47:02,196 - INFO - Training models...
+2025-08-29 22:47:02,196 - INFO - Training TCNModel...
+2025-08-29 22:47:02,200 - INFO - Train dataset contains 320 samples.
+2025-08-29 22:47:02,208 - INFO - Time series values are 64-bits; casting model to float64.
+2025-08-29 22:47:25,947 - INFO - TCNModel training completed - Final loss: 2.4485
+2025-08-29 22:47:25,947 - INFO - Training TransformerModel...
+2025-08-29 22:47:25,950 - INFO - Train dataset contains 320 samples.
+2025-08-29 22:47:25,975 - INFO - Time series values are 64-bits; casting model to float64.
+2025-08-29 22:47:49,179 - INFO - TransformerModel training completed - Final loss: 1.8740
+2025-08-29 22:47:49,180 - INFO - Training NBEATSModel...
+2025-08-29 22:47:49,184 - INFO - Train dataset contains 320 samples.
+2025-08-29 22:47:49,411 - INFO - Time series values are 64-bits; casting model to float64.
+2025-08-29 22:51:05,889 - INFO - NBEATSModel training completed - Final loss: 1.0176
+2025-08-29 22:51:05,890 - INFO - Training TFTModel...
+2025-08-29 22:51:05,894 - ERROR - ValueError: TFTModel requires future covariates. The model applies multi-head attention queries on future inputs. Consider specifying a future encoder with `add_encoders` or setting `add_relative_index` to `True` at model creation (read TFT model docs for more information). These will automatically generate `future_covariates` from indexes.
+2025-08-29 22:51:05,895 - WARNING - Failed to train TFTModel: Failed to train Unknown: TFTModel requires future covariates. The model applies multi-head attention queries on future inputs. Consider specifying a future encoder with `add_encoders` or setting `add_relative_index` to `True` at model creation (read TFT model docs for more information). These will automatically generate `future_covariates` from indexes.
+2025-08-29 22:51:05,895 - INFO - Training DLinearModel...
+2025-08-29 22:51:05,898 - INFO - Train dataset contains 320 samples.
+2025-08-29 22:51:05,905 - INFO - Time series values are 64-bits; casting model to float64.
+2025-08-29 22:51:08,006 - INFO - DLinearModel training completed - Final loss: 2.5966
+2025-08-29 22:51:08,006 - INFO - Training NLinearModel...
+2025-08-29 22:51:08,010 - INFO - Train dataset contains 320 samples.
+2025-08-29 22:51:08,016 - INFO - Time series values are 64-bits; casting model to float64.
+2025-08-29 22:51:09,758 - INFO - NLinearModel training completed - Final loss: 0.3723
+2025-08-29 22:51:09,759 - INFO - Successfully trained 5 models
+2025-08-29 22:51:09,759 - INFO - === Model Evaluation and Visualization Phase ===
+2025-08-29 22:51:09,759 - INFO - Evaluating TCNModel...
+2025-08-29 22:51:09,804 - INFO - TCNModel - MAE: 0.1308, RMSE: 0.1591
+2025-08-29 22:51:09,804 - INFO - Evaluating TransformerModel...
+2025-08-29 22:51:09,854 - INFO - TransformerModel - MAE: 2.2736, RMSE: 2.3263
+2025-08-29 22:51:09,854 - INFO - Evaluating NBEATSModel...
+2025-08-29 22:51:09,990 - INFO - NBEATSModel - MAE: 1.3341, RMSE: 1.5585
+2025-08-29 22:51:09,990 - INFO - Evaluating DLinearModel...
+2025-08-29 22:51:10,031 - INFO - DLinearModel - MAE: 1.3825, RMSE: 1.6453
+2025-08-29 22:51:10,031 - INFO - Evaluating NLinearModel...
+2025-08-29 22:51:10,071 - INFO - NLinearModel - MAE: 2.1814, RMSE: 2.1976
+2025-08-29 22:51:10,072 - INFO - Creating visualizations...
+2025-08-29 22:51:16,382 - INFO - Visualizations saved
+2025-08-29 22:51:16,382 - INFO - === Model Artifact Management Phase ===
+2025-08-29 22:51:16,382 - INFO - Saving artifacts for TCNModel...
+2025-08-29 22:51:16,411 - INFO - Saved TCNModel artifacts to model_artifacts\model_artifacts_20250829_225116
+2025-08-29 22:51:16,411 - INFO - Saving artifacts for TransformerModel...
+2025-08-29 22:51:16,438 - INFO - Saved TransformerModel artifacts to model_artifacts\model_artifacts_20250829_225116
+2025-08-29 22:51:16,438 - INFO - Saving artifacts for NBEATSModel...
+2025-08-29 22:51:17,746 - INFO - Saved NBEATSModel artifacts to model_artifacts\model_artifacts_20250829_225116
+2025-08-29 22:51:17,746 - INFO - Saving artifacts for DLinearModel...
+2025-08-29 22:51:17,766 - INFO - Saved DLinearModel artifacts to model_artifacts\model_artifacts_20250829_225117
+2025-08-29 22:51:17,766 - INFO - Saving artifacts for NLinearModel...
+2025-08-29 22:51:17,784 - INFO - Saved NLinearModel artifacts to model_artifacts\model_artifacts_20250829_225117
+2025-08-29 22:51:17,784 - INFO - === Data Integrity Validation Phase ===
+2025-08-29 22:51:17,791 - WARNING -   Warning: Feature 0 mean (177.906608) is not close to 0
+2025-08-29 22:51:17,792 - WARNING -   Warning: Feature 1 mean (110563822.005929) is not close to 0
+2025-08-29 22:51:17,792 - WARNING -   Warning: Feature 2 mean (27697872145.563240) is not close to 0
+2025-08-29 22:51:17,792 - WARNING -   Warning: Feature 3 mean (20.669381) is not close to 0
+2025-08-29 22:51:17,792 - WARNING -   Warning: Feature 4 mean (1.920744) is not close to 0
+2025-08-29 22:51:17,793 - WARNING -   Warning: Feature 5 mean (15.031659) is not close to 0
+2025-08-29 22:51:17,793 - WARNING -   Warning: Feature 6 mean (177.373674) is not close to 0
+2025-08-29 22:51:17,793 - WARNING -   Warning: Feature 7 mean (0.369887) is not close to 0
+2025-08-29 22:51:17,793 - WARNING -   Warning: Feature 8 mean (0.010122) is not close to 0
+2025-08-29 22:51:17,793 - WARNING -   Warning: Feature 9 mean (0.359766) is not close to 0
+2025-08-29 22:51:17,794 - WARNING -   Warning: Feature 10 mean (14000012495.134388) is not close to 0
+2025-08-29 22:51:17,794 - WARNING -   Warning: Feature 11 mean (0.343891) is not close to 0
+2025-08-29 22:51:17,794 - WARNING -   Warning: Feature 12 mean (53.848968) is not close to 0
+2025-08-29 22:51:17,795 - WARNING -   Warning: Feature 13 mean (176.655792) is not close to 0
+2025-08-29 22:51:17,795 - WARNING -   Warning: Feature 14 mean (63.712075) is not close to 0
+2025-08-29 22:51:17,795 - WARNING -   Warning: Feature 15 mean (63.762389) is not close to 0
+2025-08-29 22:51:17,795 - WARNING -   Warning: Feature 16 mean (51.559947) is not close to 0
+2025-08-29 22:51:17,796 - WARNING -   Warning: Feature 17 mean (34055072.012783) is not close to 0
+2025-08-29 22:51:17,796 - WARNING -   Warning: Feature 18 mean (-36.170713) is not close to 0
+2025-08-29 22:51:17,796 - WARNING -   Warning: Feature 19 mean (56.040301) is not close to 0
+2025-08-29 22:51:17,796 - WARNING -   Warning: Feature 20 mean (0.048782) is not close to 0
+2025-08-29 22:51:17,796 - WARNING -   Warning: Feature 0 std (9.074849) is not close to 1
+2025-08-29 22:51:17,797 - WARNING -   Warning: Feature 1 std (52049562.099286) is not close to 1
+2025-08-29 22:51:17,797 - WARNING -   Warning: Feature 2 std (1600432829.389931) is not close to 1
+2025-08-29 22:51:17,797 - WARNING -   Warning: Feature 3 std (6.894798) is not close to 1
+2025-08-29 22:51:17,797 - WARNING -   Warning: Feature 4 std (0.567762) is not close to 1
+2025-08-29 22:51:17,797 - WARNING -   Warning: Feature 5 std (105.946585) is not close to 1
+2025-08-29 22:51:17,798 - WARNING -   Warning: Feature 6 std (8.212710) is not close to 1
+2025-08-29 22:51:17,798 - WARNING -   Warning: Feature 7 std (1.377554) is not close to 1
+2025-08-29 22:51:17,798 - WARNING -   Warning: Feature 8 std (0.447880) is not close to 1
+2025-08-29 22:51:17,798 - WARNING -   Warning: Feature 9 std (1.283105) is not close to 1
+2025-08-29 22:51:17,798 - WARNING -   Warning: Feature 10 std (612911599.905883) is not close to 1
+2025-08-29 22:51:17,799 - WARNING -   Warning: Feature 11 std (2.427648) is not close to 1
+2025-08-29 22:51:17,799 - WARNING -   Warning: Feature 12 std (9.921034) is not close to 1
+2025-08-29 22:51:17,799 - WARNING -   Warning: Feature 13 std (9.583204) is not close to 1
+2025-08-29 22:51:17,799 - WARNING -   Warning: Feature 14 std (25.282345) is not close to 1
+2025-08-29 22:51:17,799 - WARNING -   Warning: Feature 15 std (26.317711) is not close to 1
+2025-08-29 22:51:17,799 - WARNING -   Warning: Feature 16 std (14.434937) is not close to 1
+2025-08-29 22:51:17,800 - WARNING -   Warning: Feature 17 std (68528520.329247) is not close to 1
+2025-08-29 22:51:17,800 - WARNING -   Warning: Feature 18 std (28.972690) is not close to 1
+2025-08-29 22:51:17,800 - WARNING -   Warning: Feature 19 std (9.692672) is not close to 1
+2025-08-29 22:51:17,800 - WARNING -   Warning: Feature 20 std (0.525236) is not close to 1
+2025-08-29 22:51:17,801 - WARNING -   Warning: Very large values detected (max absolute: 3.04e+10)
+2025-08-29 22:51:17,801 - INFO - === Final Results and Summary Phase ===
+2025-08-29 22:51:17,801 - INFO - DARTS Stock Forecasting Pipeline Complete!
+2025-08-29 22:51:17,801 - INFO - ============================================================
+2025-08-29 22:51:17,801 - INFO - FINAL PERFORMANCE SUMMARY
+2025-08-29 22:51:17,802 - INFO - ============================================================
+2025-08-29 22:51:17,802 - INFO - Model Performance Ranking (by MAE):
+2025-08-29 22:51:17,802 - INFO -  1. TCNModel        - MAE: 0.1308, RMSE: 0.1591, MAPE: 6.31%
+2025-08-29 22:51:17,802 - INFO -  2. NBEATSModel     - MAE: 1.3341, RMSE: 1.5585, MAPE: 63.23%
+2025-08-29 22:51:17,803 - INFO -  3. DLinearModel    - MAE: 1.3825, RMSE: 1.6453, MAPE: 65.75%
+2025-08-29 22:51:17,803 - INFO -  4. NLinearModel    - MAE: 2.1814, RMSE: 2.1976, MAPE: 107.00%
+2025-08-29 22:51:17,803 - INFO -  5. TransformerModel - MAE: 2.2736, RMSE: 2.3263, MAPE: 109.96%
+2025-08-29 22:51:17,803 - INFO - 
+Training Convergence Summary:
+2025-08-29 22:51:17,820 - INFO - 
+Check output directories for:
+2025-08-29 22:51:17,820 - INFO - - Saved models and artifacts: model_artifacts/
+2025-08-29 22:51:17,821 - INFO - - Visualization plots: output/plots/
+2025-08-29 22:51:17,821 - INFO - - Training logs: darts_forecasting.log
+2025-08-29 22:51:17,821 - INFO - Pipeline completed successfully!
+2025-08-29 22:51:38,578 - INFO - Starting DARTS Stock Forecasting System...
+2025-08-29 22:51:38,578 - INFO - Data path: Data\covariaterawdata1.csv
+2025-08-29 22:51:38,578 - INFO - DARTS available: True
+2025-08-29 22:51:38,579 - INFO - === Data Loading and Preprocessing Phase ===
+2025-08-29 22:51:38,579 - INFO - Loading data from Data\covariaterawdata1.csv
+2025-08-29 22:51:38,589 - INFO - Loaded 506 rows of data
+2025-08-29 22:51:38,589 - INFO - Preprocessing data...
+2025-08-29 22:51:38,592 - INFO - Preprocessed data shape: (506, 21)
+2025-08-29 22:51:38,593 - INFO - === Custom Holiday Calendar and TimeSeries Creation Phase ===
+2025-08-29 22:51:38,593 - INFO - Creating custom holiday calendar...
+2025-08-29 22:51:38,622 - INFO - Created custom calendar with 18 holidays
+2025-08-29 22:51:38,622 - INFO - Converting to DARTS TimeSeries...
+2025-08-29 22:51:38,651 - INFO - Created TimeSeries with 506 points
+2025-08-29 22:51:38,651 - INFO - === Data Splitting and Scaling Phase ===
+2025-08-29 22:51:38,652 - INFO - Splitting data temporally...
+2025-08-29 22:51:38,652 - INFO - Split sizes - Train: 354, Val: 76, Test: 76
+2025-08-29 22:51:38,652 - INFO - Scaling features...
+2025-08-29 22:51:38,688 - INFO - Data scaling completed
+2025-08-29 22:51:38,688 - INFO - === Target Creation Phase ===
+2025-08-29 22:51:38,688 - INFO - TargetCreator initialized with 5-day prediction horizon
+2025-08-29 22:51:38,688 - INFO - Creating targets with 5-day horizon
+2025-08-29 22:51:38,690 - INFO - Created targets: original length 506, target length 501
+2025-08-29 22:51:38,690 - INFO - Target column: 0_target_5d
+2025-08-29 22:51:38,690 - INFO - Created targets with 501 points
+2025-08-29 22:51:38,690 - INFO - === Model Factory and Training Phase ===
+2025-08-29 22:51:38,691 - INFO - Creating model instances...
+2025-08-29 22:51:38,691 - ERROR - ValueError: `training_length` (24) must be `>=input_chunk_length` (30).
+2025-08-29 22:51:38,730 - INFO - Created 6 models: ['TCNModel', 'TransformerModel', 'NBEATSModel', 'TFTModel', 'DLinearModel', 'NLinearModel']
+2025-08-29 22:51:38,730 - INFO - Training models...
+2025-08-29 22:51:38,730 - INFO - Training TCNModel...
+2025-08-29 22:51:38,734 - INFO - Train dataset contains 320 samples.
+2025-08-29 22:51:38,742 - INFO - Time series values are 64-bits; casting model to float64.
+2025-08-29 22:52:04,029 - INFO - TCNModel training completed - Final loss: 2.4485
+2025-08-29 22:52:04,029 - INFO - Training TransformerModel...
+2025-08-29 22:52:04,033 - INFO - Train dataset contains 320 samples.
+2025-08-29 22:52:04,054 - INFO - Time series values are 64-bits; casting model to float64.
+2025-08-29 22:52:28,443 - INFO - TransformerModel training completed - Final loss: 1.8740
+2025-08-29 22:52:28,443 - INFO - Training NBEATSModel...
+2025-08-29 22:52:28,447 - INFO - Train dataset contains 320 samples.
+2025-08-29 22:52:28,705 - INFO - Time series values are 64-bits; casting model to float64.
+2025-08-29 22:55:44,930 - INFO - NBEATSModel training completed - Final loss: 1.0176
+2025-08-29 22:55:44,931 - INFO - Training TFTModel...
+2025-08-29 22:55:44,935 - ERROR - ValueError: TFTModel requires future covariates. The model applies multi-head attention queries on future inputs. Consider specifying a future encoder with `add_encoders` or setting `add_relative_index` to `True` at model creation (read TFT model docs for more information). These will automatically generate `future_covariates` from indexes.
+2025-08-29 22:55:44,936 - WARNING - Failed to train TFTModel: Failed to train Unknown: TFTModel requires future covariates. The model applies multi-head attention queries on future inputs. Consider specifying a future encoder with `add_encoders` or setting `add_relative_index` to `True` at model creation (read TFT model docs for more information). These will automatically generate `future_covariates` from indexes.
+2025-08-29 22:55:44,936 - INFO - Training DLinearModel...
+2025-08-29 22:55:44,940 - INFO - Train dataset contains 320 samples.
+2025-08-29 22:55:44,947 - INFO - Time series values are 64-bits; casting model to float64.
+2025-08-29 22:55:47,183 - INFO - DLinearModel training completed - Final loss: 2.5966
+2025-08-29 22:55:47,183 - INFO - Training NLinearModel...
+2025-08-29 22:55:47,187 - INFO - Train dataset contains 320 samples.
+2025-08-29 22:55:47,193 - INFO - Time series values are 64-bits; casting model to float64.
+2025-08-29 22:55:49,078 - INFO - NLinearModel training completed - Final loss: 0.3723
+2025-08-29 22:55:49,078 - INFO - Successfully trained 5 models
+2025-08-29 22:55:49,079 - INFO - === Model Evaluation and Visualization Phase ===
+2025-08-29 22:55:49,079 - INFO - Evaluating TCNModel...
+2025-08-29 22:55:49,128 - INFO - TCNModel - MAE: 0.1308, RMSE: 0.1591
+2025-08-29 22:55:49,128 - INFO - Evaluating TransformerModel...
+2025-08-29 22:55:49,179 - INFO - TransformerModel - MAE: 2.2736, RMSE: 2.3263
+2025-08-29 22:55:49,179 - INFO - Evaluating NBEATSModel...
+2025-08-29 22:55:49,336 - INFO - NBEATSModel - MAE: 1.3341, RMSE: 1.5585
+2025-08-29 22:55:49,336 - INFO - Evaluating DLinearModel...
+2025-08-29 22:55:49,390 - INFO - DLinearModel - MAE: 1.3825, RMSE: 1.6453
+2025-08-29 22:55:49,391 - INFO - Evaluating NLinearModel...
+2025-08-29 22:55:49,436 - INFO - NLinearModel - MAE: 2.1814, RMSE: 2.1976
+2025-08-29 22:55:49,437 - INFO - Creating visualizations...
+2025-08-29 22:55:55,859 - INFO - Visualizations saved
+2025-08-29 22:55:55,859 - INFO - === Model Artifact Management Phase ===
+2025-08-29 22:55:55,860 - INFO - Saving artifacts for TCNModel...
+2025-08-29 22:55:55,887 - INFO - Saved TCNModel artifacts to model_artifacts\model_artifacts_20250829_225555
+2025-08-29 22:55:55,888 - INFO - Saving artifacts for TransformerModel...
+2025-08-29 22:55:55,921 - INFO - Saved TransformerModel artifacts to model_artifacts\model_artifacts_20250829_225555
+2025-08-29 22:55:55,922 - INFO - Saving artifacts for NBEATSModel...
+2025-08-29 22:55:57,220 - INFO - Saved NBEATSModel artifacts to model_artifacts\model_artifacts_20250829_225555
+2025-08-29 22:55:57,221 - INFO - Saving artifacts for DLinearModel...
+2025-08-29 22:55:57,238 - INFO - Saved DLinearModel artifacts to model_artifacts\model_artifacts_20250829_225557
+2025-08-29 22:55:57,239 - INFO - Saving artifacts for NLinearModel...
+2025-08-29 22:55:57,259 - INFO - Saved NLinearModel artifacts to model_artifacts\model_artifacts_20250829_225557
+2025-08-29 22:55:57,260 - INFO - === Data Integrity Validation Phase ===
+2025-08-29 22:55:57,264 - WARNING -   Warning: Feature 0 mean (177.906608) is not close to 0
+2025-08-29 22:55:57,264 - WARNING -   Warning: Feature 1 mean (110563822.005929) is not close to 0
+2025-08-29 22:55:57,265 - WARNING -   Warning: Feature 2 mean (27697872145.563240) is not close to 0
+2025-08-29 22:55:57,265 - WARNING -   Warning: Feature 3 mean (20.669381) is not close to 0
+2025-08-29 22:55:57,265 - WARNING -   Warning: Feature 4 mean (1.920744) is not close to 0
+2025-08-29 22:55:57,265 - WARNING -   Warning: Feature 5 mean (15.031659) is not close to 0
+2025-08-29 22:55:57,265 - WARNING -   Warning: Feature 6 mean (177.373674) is not close to 0
+2025-08-29 22:55:57,266 - WARNING -   Warning: Feature 7 mean (0.369887) is not close to 0
+2025-08-29 22:55:57,266 - WARNING -   Warning: Feature 8 mean (0.010122) is not close to 0
+2025-08-29 22:55:57,266 - WARNING -   Warning: Feature 9 mean (0.359766) is not close to 0
+2025-08-29 22:55:57,267 - WARNING -   Warning: Feature 10 mean (14000012495.134388) is not close to 0
+2025-08-29 22:55:57,267 - WARNING -   Warning: Feature 11 mean (0.343891) is not close to 0
+2025-08-29 22:55:57,267 - WARNING -   Warning: Feature 12 mean (53.848968) is not close to 0
+2025-08-29 22:55:57,267 - WARNING -   Warning: Feature 13 mean (176.655792) is not close to 0
+2025-08-29 22:55:57,268 - WARNING -   Warning: Feature 14 mean (63.712075) is not close to 0
+2025-08-29 22:55:57,268 - WARNING -   Warning: Feature 15 mean (63.762389) is not close to 0
+2025-08-29 22:55:57,268 - WARNING -   Warning: Feature 16 mean (51.559947) is not close to 0
+2025-08-29 22:55:57,268 - WARNING -   Warning: Feature 17 mean (34055072.012783) is not close to 0
+2025-08-29 22:55:57,269 - WARNING -   Warning: Feature 18 mean (-36.170713) is not close to 0
+2025-08-29 22:55:57,269 - WARNING -   Warning: Feature 19 mean (56.040301) is not close to 0
+2025-08-29 22:55:57,269 - WARNING -   Warning: Feature 20 mean (0.048782) is not close to 0
+2025-08-29 22:55:57,269 - WARNING -   Warning: Feature 0 std (9.074849) is not close to 1
+2025-08-29 22:55:57,270 - WARNING -   Warning: Feature 1 std (52049562.099286) is not close to 1
+2025-08-29 22:55:57,270 - WARNING -   Warning: Feature 2 std (1600432829.389931) is not close to 1
+2025-08-29 22:55:57,270 - WARNING -   Warning: Feature 3 std (6.894798) is not close to 1
+2025-08-29 22:55:57,271 - WARNING -   Warning: Feature 4 std (0.567762) is not close to 1
+2025-08-29 22:55:57,271 - WARNING -   Warning: Feature 5 std (105.946585) is not close to 1
+2025-08-29 22:55:57,271 - WARNING -   Warning: Feature 6 std (8.212710) is not close to 1
+2025-08-29 22:55:57,271 - WARNING -   Warning: Feature 7 std (1.377554) is not close to 1
+2025-08-29 22:55:57,272 - WARNING -   Warning: Feature 8 std (0.447880) is not close to 1
+2025-08-29 22:55:57,272 - WARNING -   Warning: Feature 9 std (1.283105) is not close to 1
+2025-08-29 22:55:57,272 - WARNING -   Warning: Feature 10 std (612911599.905883) is not close to 1
+2025-08-29 22:55:57,272 - WARNING -   Warning: Feature 11 std (2.427648) is not close to 1
+2025-08-29 22:55:57,273 - WARNING -   Warning: Feature 12 std (9.921034) is not close to 1
+2025-08-29 22:55:57,273 - WARNING -   Warning: Feature 13 std (9.583204) is not close to 1
+2025-08-29 22:55:57,273 - WARNING -   Warning: Feature 14 std (25.282345) is not close to 1
+2025-08-29 22:55:57,273 - WARNING -   Warning: Feature 15 std (26.317711) is not close to 1
+2025-08-29 22:55:57,273 - WARNING -   Warning: Feature 16 std (14.434937) is not close to 1
+2025-08-29 22:55:57,274 - WARNING -   Warning: Feature 17 std (68528520.329247) is not close to 1
+2025-08-29 22:55:57,274 - WARNING -   Warning: Feature 18 std (28.972690) is not close to 1
+2025-08-29 22:55:57,274 - WARNING -   Warning: Feature 19 std (9.692672) is not close to 1
+2025-08-29 22:55:57,274 - WARNING -   Warning: Feature 20 std (0.525236) is not close to 1
+2025-08-29 22:55:57,275 - WARNING -   Warning: Very large values detected (max absolute: 3.04e+10)
+2025-08-29 22:55:57,275 - INFO - === Final Results and Summary Phase ===
+2025-08-29 22:55:57,275 - INFO - DARTS Stock Forecasting Pipeline Complete!
+2025-08-29 22:55:57,275 - INFO - ============================================================
+2025-08-29 22:55:57,275 - INFO - FINAL PERFORMANCE SUMMARY
+2025-08-29 22:55:57,276 - INFO - ============================================================
+2025-08-29 22:55:57,276 - INFO - Model Performance Ranking (by MAE):
+2025-08-29 22:55:57,276 - INFO -  1. TCNModel        - MAE: 0.1308, RMSE: 0.1591, MAPE: 6.31%
+2025-08-29 22:55:57,276 - INFO -  2. NBEATSModel     - MAE: 1.3341, RMSE: 1.5585, MAPE: 63.23%
+2025-08-29 22:55:57,276 - INFO -  3. DLinearModel    - MAE: 1.3825, RMSE: 1.6453, MAPE: 65.75%
+2025-08-29 22:55:57,276 - INFO -  4. NLinearModel    - MAE: 2.1814, RMSE: 2.1976, MAPE: 107.00%
+2025-08-29 22:55:57,277 - INFO -  5. TransformerModel - MAE: 2.2736, RMSE: 2.3263, MAPE: 109.96%
+2025-08-29 22:55:57,277 - INFO - 
+Training Convergence Summary:
+2025-08-29 22:55:57,290 - INFO - 
+Check output directories for:
+2025-08-29 22:55:57,291 - INFO - - Saved models and artifacts: model_artifacts/
+2025-08-29 22:55:57,291 - INFO - - Visualization plots: output/plots/
+2025-08-29 22:55:57,291 - INFO - - Training logs: darts_forecasting.log
+2025-08-29 22:55:57,291 - INFO - Pipeline completed successfully!

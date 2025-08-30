@@ -1,0 +1,30 @@
+{
+  "execution_info": {
+    "start_time": "2025-08-29T22:15:44.992126",
+    "end_time": "2025-08-29T22:15:44.993835",
+    "total_execution_time": 0.0017092227935791016,
+    "categories_run": 0
+  },
+  "overall_statistics": {
+    "total_tests": 0,
+    "total_failures": 0,
+    "total_errors": 0,
+    "total_skipped": 0,
+    "overall_success_rate": 0
+  },
+  "category_results": {
+    "integration": {
+      "skipped": true,
+      "reason": "Dependencies not available"
+    },
+    "synthetic": {
+      "skipped": true,
+      "reason": "Dependencies not available"
+    }
+  },
+  "system_info": {
+    "darts_available": true,
+    "psutil_available": false,
+    "comprehensive_tests_available": false
+  }
+}

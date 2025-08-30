@@ -1,0 +1,65 @@
+1) Overall Project Description: the goal of this project is to feed scaled data into DARTS time series models to forecast a single Stock's price 5 business days in the future. The data will contain multiple variables but will predict a single target y (price, specifically the adjusted close) column. 
+
+2) Project Details: 
+Time Series: DARTS requires the data frame to be turned into a time series object before it is sent to the darts models. the time series object you create should use a Custom holiday index for missing days. That index should treat any missing day as a holiday
+Jupyter Notebook/Python: This project should be written in python, and executed from a central python script which is structured like a jupyter notebook. The central script should still be a .py file, not .ipynb, but it should be structured as a jupyter notebook so that I can easily copy and paste move it to one if needed during tested. Include commented faux cell divisions which state whether a cell is text or markdown. These comments should be standardized so that I can write a script to programmatically convert this whole python file to a ipynb if needed, and use the standard comments as markers for creating/converting cells in the new file. 
+
+3) References: 
+Internal References: Create and maintain a PROJECT_REFERENCE.md file as the source of truth for this project. Before writing or modifying any code, you MUST consult this guide. After making any changes to the project's structure, functions, or data, you MUST update this guide immediately.
+
+The guide must contain the following sections:
+
+1. Project Directory Tree
+A complete visual map of the project's file and directory structure.
+
+2. Function and Class Reference
+A list of all public functions and classes for each script, including their full signatures with type hints and a brief description.
+
+3. Global Constants and Configuration
+A list of all global constants and configuration variables, including their names and purpose.
+
+4. Data Schema
+A definition of the structure for all key data assets, specifying column names and data types.
+
+External References: In your top level working folder, /KiroProject2 there is a subfolder called "/KiroProject2/ExternalReferences" which contains an html file of the DARTS user guide documentation. Consult this when designing this project to ensure you are not contradicting DARTS best practice. Feel free to move this folder or this html file as you design the folder architecture if needed, just as always, make sure you update your project structure reference. 
+
+4) Testing:
+Do unit testing for this project.
+Test how the scripts/functions interact with each other and make sure they can call each other or other variables without errors
+Run tests using real data when possible, record train and val loss per model during tests and during future tests ensure that it has not gotten substantially worse
+Test by actually running the models locally in CPU mode
+Do a final check using training data to ensure train loss and val loss are decreasing. Develop a checklist (or test plan) if not that begins by evaluating the data integrity
+Ensure any tests scripts created are properly separated into a test folder, and have "TESTING" prepended to their file name. Same goes with any documentation or potential dummy data created for testing, prepend "TESTING" to their file name. Also do this for troubleshooting, any steps you take for troubleshooting including script creation should have "TROUBLESHOOTING" prepended to their filename. 
+
+5) Concerting the data frame to a DARTS time series:
+Build a Darts TimeSeries at daily (business day) frequency where any missing business days between the first and last timestamps are treated as custom holidays via a custom holiday calendar. Ignore any denoised columns.Inputs to this time series are A pandas DataFrame indexed by datetime (daily granularity) containing an “Adjusted Close” column.
+Its Index must be sorted ascending. Steps to creating the time series object:
+Determine the inclusive date span by taking the minimum and maximum timestamps from the DataFrame index.
+Create the complete set of business days (Monday–Friday) across that span.
+Identify missing dates by subtracting the DataFrame’s existing index from the complete business-day range.
+Treat every missing date as a holiday and build a custom holiday calendar from those dates.
+Use nearest-workday observance so that holidays falling on weekends are observed on a neighboring weekday.
+Give each holiday a stable, unique name.
+Create a custom business day frequency using the custom holiday calendar.
+Annotate the DataFrame’s existing index with this custom frequency (do not add or remove rows; do not fill gaps).
+Validate the data:
+Ensure the “Close” or "Adjusted Close" column exists.
+Ensure the index is unique, strictly increasing, and all timestamps are business days under the custom calendar.
+Ensure no NaN values will be passed to Darts.
+Create and return a Darts TimeSeries using the DataFrame’s existing timestamps (with the custom business-day frequency) and the “Close” values.
+Also return the constructed custom holiday calendar or the custom business day frequency for reuse elsewhere.
+Acceptance criteria for time series: The TimeSeries index carries the custom business-day frequency that excludes all inferred holiday dates.
+The number of TimeSeries points equals the number of rows in the input DataFrame.
+No NaN values are present in the TimeSeries.
+The list of custom holidays matches exactly the set of missing business days between the first and last timestamp.
+6) Data:
+Location: In your top level working folder, /KiroProject2 there is a subfolder called "/KiroProject2/data" which contains a medium sized dataset called covariaterawdata1.csv. This will be the dataset you test with whenever possible, understanding that in some circumstances dummy data may need to be created. Feel free to move the data file as needed to match the evolving model architecture, but if you do update your source documentation with its new location. 
+A target y column should be created to facilitate model predictions. 
+If multiple target y columns are created (ie day 1, day 2, day 3, etc) to get a 5 day prediction (some models allow this), make sure there is no data leakage and models only have access to data available to them on the day they are making predictions (their 'pseudo today)
+Make sure any non numeric columns like strings are dropped before the time series is fed to the models. 
+Show a head and tail of all feature columns of the time series data before it is fed to the model.
+Data should be scaled using standard scaler
+There should be a .7 / .15 / .15 split for training/validation/testing
+Scaling should only be done on the training data and then fit to the other sets
+7) Models: Test using every neural network model (not machine learning model) that DARTS has which can support multiple feature columns. Dont test using machine learning models like ARIMA. 
+8) Predictions: Graphs and statistics should be output for each model showing how accurate it was and how its prediction days plotted versus actual values. When models are done training, everything needed to use the trained model to make forward looking predictions should be saved (ie a .pt or pth file, scalers, etc). 

@@ -1,0 +1,45 @@
+{
+  "execution_info": {
+    "start_time": "2025-08-29T22:33:23.040319",
+    "end_time": "2025-08-29T22:33:26.471892",
+    "total_execution_time": 3.431572675704956,
+    "categories_run": 2
+  },
+  "overall_statistics": {
+    "total_tests": 11,
+    "total_failures": 1,
+    "total_errors": 2,
+    "total_skipped": 0,
+    "overall_success_rate": 0.7272727272727273
+  },
+  "category_results": {
+    "integration": {
+      "tests_run": 5,
+      "failures": 1,
+      "errors": 2,
+      "skipped": 0,
+      "success_rate": 0.4,
+      "details": {
+        "failures": [
+          "Traceback (most recent call last):\n  File \"X:\\KiroProject2\\tests\\TESTING_comprehensive_test_suite.py\", line 700, in test_concurrent_execution_stability\n    self.assertEqual(len(results), n_workers, \"All workers should complete successfully\")\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: 0 != 3 : All workers should complete successfully\n\nStdout:\n\n=== Concurrent Execution Stability Test ===\n   Starting 3 concurrent workers...\n"
+        ],
+        "errors": [
+          "Traceback (most recent call last):\n  File \"X:\\KiroProject2\\tests\\TESTING_comprehensive_test_suite.py\", line 586, in test_memory_usage_profiling\n    timeseries = self.timeseries_creator.create_timeseries(test_df)\n  File \"X:\\KiroProject2\\tests\\..\\src\\darts_timeseries_creator.py\", line 61, in create_timeseries\n    self._validate_input_dataframe(df)\n    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^\n  File \"X:\\KiroProject2\\tests\\..\\src\\darts_timeseries_creator.py\", line 116, in _validate_input_dataframe\n    raise NaNValuesError(f\"NaN values found in columns: {nan_cols}\")\ndarts_timeseries_creator.NaNValuesError: NaN values found in columns: ['sma_20', 'ema_12']\n\nStdout:\n\n=== Memory Usage Profiling Test ===\n\nTesting small dataset (100 days)...\n",
+          "Traceback (most recent call last):\n  File \"X:\\KiroProject2\\tests\\TESTING_comprehensive_test_suite.py\", line 495, in test_performance_regression\n    timeseries = self.timeseries_creator.create_timeseries(test_df)\n  File \"X:\\KiroProject2\\tests\\..\\src\\darts_timeseries_creator.py\", line 61, in create_timeseries\n    self._validate_input_dataframe(df)\n    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^\n  File \"X:\\KiroProject2\\tests\\..\\src\\darts_timeseries_creator.py\", line 116, in _validate_input_dataframe\n    raise NaNValuesError(f\"NaN values found in columns: {nan_cols}\")\ndarts_timeseries_creator.NaNValuesError: NaN values found in columns: ['sma_20', 'ema_12']\n\nStdout:\n\n=== Performance Regression Test ===\n   Loaded previous performance baseline\n"
+        ]
+      }
+    },
+    "synthetic": {
+      "tests_run": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "success_rate": 1.0
+    }
+  },
+  "system_info": {
+    "darts_available": true,
+    "psutil_available": true,
+    "comprehensive_tests_available": true
+  }
+}
