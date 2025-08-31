@@ -1,0 +1,50 @@
+
+# Gemini Configuration: Kiro Darts 2 Project
+
+## Project Details: 
+*   **Core Objectives:** The agent will build a Python project to forecast a single stock's adjusted close price five business days into the future using DARTS time series neural network models. The system will process scaled, multivariate data and will be structured for easy conversion into a Jupyter Notebook. All project-related decisions and changes must be documented for reference and consistency. The agent will consult the PROJECT_REFERENCE.md before taking action to ensure it understands the context of the project
+*   **Data Handling:** The agent must retrieve the primary dataset from /KiroProject2/data/covariaterawdata1.csv and use it for all tests. It will perform a 70%/15%/15% training/validation/testing split. Scaling using StandardScaler must be performed exclusively on the training data and then applied to the validation and test sets to prevent data leakage.
+*   **External Knowledge:** The agent must consult the provided DARTS documentation (/KiroProject2/ExternalReferences/) to ensure all model implementations adhere to best practices. If the agent is unable to find adequate information or documentation within its own knowledge, the external knowledge folder, by searching online, the project files or documentation, or other standard information sources used by the model, it should ask the user for more information or resources
+
+## Core Principles:
+1.  **Documentation First:** Before any code is written or modified, the relevant design, requirements, and task files must be updated. `PROJECT_REFERENCE.md` is the single source of truth for the project's current state.
+2.  **Test-Driven Development (TDD):** All new functionality must be accompanied by comprehensive unit and integration tests. Test filenames must be prefixed with `TESTING_`.
+3.  **Modularity and Reusability:** Code should be organized into logical, reusable components (classes and functions) with clear interfaces.
+4.  **Data Integrity:** Rigorous validation checks must be implemented at every stage of the data processing pipeline.
+5.  **Consistency:** Adhere strictly to the naming conventions, architectural patterns, and coding styles established in the project.
+
+## Development Workflow:
+1.  **Consult `PROJECT_REFERENCE.md`:** Before starting any task, review this document to understand the current project structure, component interfaces, and data schemas.
+2.  **Update Documentation:** Modify `design.md`, `requirements.md`, and `tasks.md` to reflect the intended changes.
+3.  **Implement Code and Tests:** Write the necessary Python code and corresponding tests.
+4.  **Run Tests:** Execute all relevant tests to ensure the changes are correct and do not introduce regressions.
+5.  **Update `PROJECT_REFERENCE.md`:** After successfully implementing and testing the changes, update `PROJECT_REFERENCE.md` to reflect the new state of the project.
+
+## Specific Instructions:
+
+*   **File Naming:**
+    *   Test files: `TESTING_<component_name>.py`
+    *   Troubleshooting scripts: `TROUBLESHOOTING_<issue_description>.py`
+*   **Code Style:**
+    *   Follow PEP 8 guidelines.
+    *   Use type hints for all function signatures.
+    *   Structure the main script like a Jupyter notebook with standardized cell division comments (`# === CELL: markdown ===` and `# === CELL: code ===`).
+*   **Error Handling:**
+    *   Implement custom, specific exception classes for different error conditions (e.g., `DataValidationError`, `TimeSeriesIndexError`).
+*   **External References:**
+    *   When dealing with the Darts library, refer to the user guide located at `ExternalReferences/darts_userguide_merged.html` for DARTS best practices and API usage.
+
+## Project Requirements:
+
+*   **R1: TimeSeries Creation:** Convert stock data to DARTS TimeSeries with custom holiday handling.
+*   **R2: Data Scaling/Splitting:** Scale and split data (70/15/15) without data leakage.
+*   **R3: Model Training:** Test multiple DARTS neural network models.
+*   **R4: Evaluation & Visualization:** Provide comprehensive model evaluation and visualization.
+*   **R5: Project Structure:** Maintain a well-structured and documented Python project.
+*   **R6: Data Validation:** Implement rigorous data integrity checks.
+
+## Project Design:
+
+*   **Architecture:** A modular pipeline for data processing, time series creation, model training, and evaluation.
+*   **Components:** DataLoader, DataPreprocessor, CustomHolidayCalendar, DartsTimeSeriesCreator, DataSplitter, DataScaler, ModelFactory, ModelTrainer, ModelEvaluator, ResultsVisualizer, ModelArtifactSaver, ProjectReferenceManager, DataIntegrityValidator.
+*   **Data Models:** Use dataclasses for `StockData`, `TrainingResults`, `EvaluationResults`, and `ValidationReport`.

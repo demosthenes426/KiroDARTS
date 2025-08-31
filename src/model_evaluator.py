@@ -69,98 +69,28 @@ class ModelEvaluator:
         # Evaluation history
         self.evaluation_history = {}
         
-    def evaluate_model(self, 
-                      model: ForecastingModel,
-                      test_ts: TimeSeries,
-                      model_name: str = "Unknown",
-                      prediction_length: Optional[int] = None) -> EvaluationResults:
+    def evaluate(self, actual_series: TimeSeries, predicted_series: TimeSeries) -> Dict[str, float]:
         """
-        Evaluate a trained DARTS model on test data.
+        Calculate evaluation metrics between two TimeSeries.
         
         Args:
-            model: Trained DARTS forecasting model
-            test_ts: Test TimeSeries data
-            model_name: Name of the model for logging
-            prediction_length: Number of steps to predict (defaults to model's output_chunk_length)
+            actual_series (TimeSeries): The ground truth series.
+            predicted_series (TimeSeries): The predicted series.
             
         Returns:
-            EvaluationResults: Evaluation results and metrics
-            
-        Raises:
-            ModelEvaluationError: If evaluation fails
+            Dict[str, float]: A dictionary containing MAE, RMSE, and MAPE metrics.
         """
-        if not DARTS_AVAILABLE:
-            raise ModelEvaluationError("DARTS library is not available. Please install darts.")
-        
-        if self.verbose:
-            print(f"\n📊 Evaluating {model_name}")
-            print(f"   Test data: {len(test_ts)} points")
-        
         try:
-            import time
-            start_time = time.time()
-            
-            # Determine prediction length
-            if prediction_length is None:
-                prediction_length = getattr(model, 'output_chunk_length', 5)
-            
-            # Generate predictions
-            predictions = self._generate_predictions(model, test_ts, prediction_length)
-            
-            # Extract actual values for comparison
-            actuals = self._extract_actuals(test_ts, len(predictions))
-            
-            # Calculate accuracy metrics
-            mae = self._calculate_mae(predictions, actuals)
-            rmse = self._calculate_rmse(predictions, actuals)
-            mape = self._calculate_mape(predictions, actuals)
-            
-            evaluation_time = time.time() - start_time
-            
-            # Check for performance degradation
-            performance_degraded = self._check_performance_degradation(
-                model_name, mae, rmse, mape
-            )
-            
-            # Create baseline comparison if available
-            baseline_comparison = None
-            if model_name in self.baseline_metrics:
-                baseline_comparison = self._compare_to_baseline(
-                    model_name, mae, rmse, mape
-                )
-            
-            if self.verbose:
-                print(f"   ✓ Predictions generated: {len(predictions)} points")
-                print(f"   ✓ MAE: {mae:.6f}")
-                print(f"   ✓ RMSE: {rmse:.6f}")
-                print(f"   ✓ MAPE: {mape:.2f}%")
-                print(f"   ✓ Evaluation time: {evaluation_time:.2f}s")
-                print(f"   ✓ Performance degraded: {'Yes' if performance_degraded else 'No'}")
-            
-            # Create results object
-            results = EvaluationResults(
-                model_name=model_name,
-                predictions=predictions,
-                actuals=actuals,
-                mae=mae,
-                rmse=rmse,
-                mape=mape,
-                prediction_length=prediction_length,
-                evaluation_time=evaluation_time,
-                performance_degraded=performance_degraded,
-                baseline_comparison=baseline_comparison
-            )
-            
-            # Store in history
-            self.evaluation_history[model_name] = results
-            
-            return results
-            
+            actuals_np = actual_series.values().flatten()
+            predicted_np = predicted_series.values().flatten()
+
+            mae = self._calculate_mae(predicted_np, actuals_np)
+            rmse = self._calculate_rmse(predicted_np, actuals_np)
+            mape = self._calculate_mape(predicted_np, actuals_np)
+
+            return {'mae': mae, 'rmse': rmse, 'mape': mape}
         except Exception as e:
-            error_msg = f"Failed to evaluate {model_name}: {str(e)}"
-            if self.verbose:
-                print(f"   ❌ {error_msg}")
-            raise ModelEvaluationError(error_msg) from e
+            raise ModelEvaluationError(f"Failed to calculate metrics: {e}") from e
     
     def evaluate_multiple_models(self,
                                models: Dict[str, ForecastingModel],

@@ -1,0 +1,6 @@
+# Exclude everything by default
+*
+
+# Explicitly un-exclude the project directory
+!/X:/KiroProject2/
+
