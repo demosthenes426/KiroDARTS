@@ -188,8 +188,8 @@ def create_targets(timeseries: TimeSeries, config: Dict, logger: logging.Logger)
     
     try:
         target_creator = TargetCreator(config['prediction_horizon'])
-        # Use column index 0 for adjusted_close (first column after preprocessing)
-        targets = target_creator.create_targets(timeseries, "0")
+        # Use adjusted_close column for target creation
+        targets = target_creator.create_targets(timeseries, "adjusted_close")
         logger.info(f"Created targets with {len(targets)} points")
         return targets
         

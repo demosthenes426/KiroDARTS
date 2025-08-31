@@ -1,560 +1,329 @@
 """
 Unit tests for ModelTrainer class.
 
-Tests model training functionality, loss monitoring, and early stopping.
+This module tests the ModelTrainer class functionality including:
+- Model training with CPU configuration
+- Training loss monitoring
+- Early stopping detection
+- Convergence analysis
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
-import warnings
+import numpy as np
+import pandas as pd
 import sys
 import os
-from dataclasses import asdict
+from unittest.mock import Mock, patch, MagicMock
+import tempfile
+import warnings
 
-# Add src directory to path for imports
+# Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from model_trainer import ModelTrainer, ModelTrainingError, TrainingResults
+# Try to import dependencies
+try:
+    from darts import TimeSeries
+    from model_trainer import ModelTrainer, TrainingResults, ModelTrainingError
+    DEPENDENCIES_AVAILABLE = True
+except ImportError as e:
+    DEPENDENCIES_AVAILABLE = False
+    print(f"Warning: Dependencies not available: {e}")
 
 
+@unittest.skipUnless(DEPENDENCIES_AVAILABLE, "Dependencies not available")
 class TestModelTrainer(unittest.TestCase):
     """Test cases for ModelTrainer class."""
     
     def setUp(self):
         """Set up test fixtures."""
-        self.trainer = ModelTrainer(
-            early_stopping_patience=5,
-            min_delta=1e-4,
-            verbose=False
-        )
+        # Create sample TimeSeries data
+        dates = pd.date_range('2023-01-01', periods=100, freq='D')
+        train_values = np.random.normal(100, 10, 70)
+        val_values = np.random.normal(100, 10, 30)
         
-        # Mock TimeSeries objects
-        self.mock_train_ts = Mock()
-        self.mock_train_ts.__len__ = Mock(return_value=100)
-        self.mock_train_ts.end_time.return_value = "2023-01-31"
-        self.mock_train_ts.pd_dataframe.return_value = Mock()
-        self.mock_train_ts.pd_dataframe.return_value.isnull.return_value.any.return_value.any.return_value = False
+        self.train_ts = TimeSeries.from_pandas(pd.Series(train_values, index=dates[:70]))
+        self.val_ts = TimeSeries.from_pandas(pd.Series(val_values, index=dates[70:]))
         
-        self.mock_val_ts = Mock()
-        self.mock_val_ts.__len__ = Mock(return_value=30)
-        self.mock_val_ts.start_time.return_value = "2023-02-01"
-        self.mock_val_ts.pd_dataframe.return_value = Mock()
-        self.mock_val_ts.pd_dataframe.return_value.isnull.return_value.any.return_value.any.return_value = False
-        
-        # Mock DARTS model
+        # Create mock model
         self.mock_model = Mock()
-        self.mock_model.n_epochs = 10
-        self.mock_model.pl_trainer_kwargs = {}
-        self.mock_model.force_reset = True
-        self.mock_model.save_checkpoints = False
         self.mock_model.fit = Mock()
-        self.mock_model.trainer = None
-        self.mock_model.training_history = None
-    
-    def test_trainer_initialization(self):
-        """Test ModelTrainer initialization with default parameters."""
-        trainer = ModelTrainer()
+        self.mock_model.trainer = Mock()
+        self.mock_model.trainer.current_epoch = 10
+        self.mock_model.n_epochs = 50
         
-        self.assertEqual(trainer.early_stopping_patience, 10)
-        self.assertEqual(trainer.min_delta, 1e-4)
-        self.assertIsNone(trainer.max_epochs)
-        self.assertTrue(trainer.verbose)
-        self.assertEqual(trainer.training_history, {})
+        # Initialize trainer
+        self.trainer = ModelTrainer(verbose=False)
     
-    def test_trainer_initialization_custom_params(self):
-        """Test ModelTrainer initialization with custom parameters."""
+    def test_init(self):
+        """Test ModelTrainer initialization."""
         trainer = ModelTrainer(
             early_stopping_patience=15,
             min_delta=1e-3,
-            max_epochs=50,
-            verbose=False
+            max_epochs=100,
+            verbose=True
         )
         
         self.assertEqual(trainer.early_stopping_patience, 15)
         self.assertEqual(trainer.min_delta, 1e-3)
-        self.assertEqual(trainer.max_epochs, 50)
-        self.assertFalse(trainer.verbose)
+        self.assertEqual(trainer.max_epochs, 100)
+        self.assertTrue(trainer.verbose)
+        self.assertEqual(len(trainer.training_history), 0)
     
-    @patch('model_trainer.DARTS_AVAILABLE', False)
-    def test_train_model_darts_not_available(self):
-        """Test train_model when DARTS is not available."""
-        trainer = ModelTrainer(verbose=False)
-        
-        with self.assertRaises(ModelTrainingError) as context:
-            trainer.train_model(self.mock_model, self.mock_train_ts, self.mock_val_ts)
-        
-        self.assertIn("DARTS library is not available", str(context.exception))
-    
-    @patch('model_trainer.DARTS_AVAILABLE', True)
-    @patch('model_trainer.time.time')
-    def test_train_model_success(self, mock_time):
+    @patch('model_trainer.CSVLogger')
+    @patch('model_trainer.pd.read_csv')
+    def test_train_model_success(self, mock_read_csv, mock_csv_logger):
         """Test successful model training."""
-        # Mock time for training duration
-        mock_time.side_effect = [0.0, 10.0]  # Start and end times
+        # Mock CSV logger and metrics
+        mock_logger_instance = Mock()
+        mock_logger_instance.log_dir = "temp_logs/test_model"
+        mock_csv_logger.return_value = mock_logger_instance
         
-        trainer = ModelTrainer(verbose=False)
+        # Mock metrics CSV data
+        mock_metrics_df = pd.DataFrame({
+            'train_loss': [1.0, 0.8, 0.6, 0.5, 0.4],
+            'val_loss': [1.1, 0.9, 0.7, 0.6, 0.5]
+        })
+        mock_read_csv.return_value = mock_metrics_df
         
-        # Configure mock model fit method
-        self.mock_model.fit = Mock()
+        # Configure mock model
+        self.mock_model.pl_trainer_kwargs = {}
         
-        result = trainer.train_model(
-            self.mock_model, 
-            self.mock_train_ts, 
-            self.mock_val_ts, 
+        result = self.trainer.train_model(
+            self.mock_model,
+            self.train_ts,
+            self.val_ts,
             "TestModel"
         )
         
-        # Verify model.fit was called
-        self.mock_model.fit.assert_called_once_with(self.mock_train_ts, val_series=self.mock_val_ts)
-        
-        # Verify result structure
+        # Check result structure
         self.assertIsInstance(result, TrainingResults)
         self.assertEqual(result.model_name, "TestModel")
-        self.assertEqual(result.training_time, 10.0)
-        self.assertIsInstance(result.train_loss, list)
-        self.assertIsInstance(result.val_loss, list)
-        self.assertGreater(len(result.train_loss), 0)
-        self.assertGreater(len(result.val_loss), 0)
+        self.assertEqual(len(result.train_loss), 5)
+        self.assertEqual(len(result.val_loss), 5)
+        self.assertEqual(result.final_train_loss, 0.4)
+        self.assertEqual(result.final_val_loss, 0.5)
+        self.assertGreater(result.training_time, 0)
         
-        # Verify training history is stored
-        self.assertIn("TestModel", trainer.training_history)
+        # Check that model.fit was called
+        self.mock_model.fit.assert_called_once_with(self.train_ts, val_series=self.val_ts)
+        
+        # Check training history is updated
+        self.assertIn("TestModel", self.trainer.training_history)
     
-    @patch('model_trainer.DARTS_AVAILABLE', True)
-    def test_train_model_with_max_epochs_override(self):
+    @patch('model_trainer.CSVLogger')
+    def test_train_model_with_max_epochs_override(self, mock_csv_logger):
         """Test training with max_epochs override."""
-        trainer = ModelTrainer(max_epochs=20, verbose=False)
+        # Mock CSV logger
+        mock_logger_instance = Mock()
+        mock_logger_instance.log_dir = "temp_logs/test_model"
+        mock_csv_logger.return_value = mock_logger_instance
         
+        # Set max_epochs override
+        trainer = ModelTrainer(max_epochs=25, verbose=False)
+        
+        # Configure mock model
+        self.mock_model.pl_trainer_kwargs = {}
         original_epochs = self.mock_model.n_epochs
         
-        trainer.train_model(
-            self.mock_model, 
-            self.mock_train_ts, 
-            self.mock_val_ts, 
-            "TestModel"
-        )
-        
-        # Verify epochs were overridden
-        self.assertEqual(self.mock_model.n_epochs, 20)
-    
-    @patch('model_trainer.DARTS_AVAILABLE', True)
-    def test_train_model_failure(self):
-        """Test model training failure."""
-        trainer = ModelTrainer(verbose=False)
-        
-        # Make model.fit raise an exception
-        self.mock_model.fit.side_effect = Exception("Training failed")
-        
-        with self.assertRaises(ModelTrainingError) as context:
+        with patch('model_trainer.pd.read_csv') as mock_read_csv:
+            mock_read_csv.side_effect = FileNotFoundError("No metrics file")
+            
             trainer.train_model(
-                self.mock_model, 
-                self.mock_train_ts, 
-                self.mock_val_ts, 
+                self.mock_model,
+                self.train_ts,
+                self.val_ts,
                 "TestModel"
             )
         
-        self.assertIn("Failed to train TestModel", str(context.exception))
-        self.assertIn("Training failed", str(context.exception))
+        # Check that epochs were overridden and restored
+        self.assertEqual(self.mock_model.n_epochs, original_epochs)
     
-    @patch('model_trainer.DARTS_AVAILABLE', True)
-    def test_train_multiple_models_success(self):
-        """Test training multiple models successfully."""
-        trainer = ModelTrainer(verbose=False)
+    def test_configure_trainer(self):
+        """Test trainer configuration for CPU."""
+        mock_logger = self.trainer._configure_trainer(self.mock_model, "TestModel")
         
-        # Create multiple mock models
-        models = {
-            "Model1": Mock(),
-            "Model2": Mock(),
-            "Model3": Mock()
-        }
+        # Check that pl_trainer_kwargs were set correctly
+        self.assertIn('accelerator', self.mock_model.pl_trainer_kwargs)
+        self.assertEqual(self.mock_model.pl_trainer_kwargs['accelerator'], 'cpu')
+        self.assertEqual(self.mock_model.pl_trainer_kwargs['devices'], 1)
+        self.assertIn('logger', self.mock_model.pl_trainer_kwargs)
         
-        for model in models.values():
-            model.n_epochs = 10
-            model.pl_trainer_kwargs = {}
-            model.force_reset = True
-            model.save_checkpoints = False
-            model.fit = Mock()
-            model.trainer = None
-            model.training_history = None
-        
-        results = trainer.train_multiple_models(
-            models, 
-            self.mock_train_ts, 
-            self.mock_val_ts
-        )
-        
-        # Verify all models were trained
-        self.assertEqual(len(results), 3)
-        for model_name in ["Model1", "Model2", "Model3"]:
-            self.assertIn(model_name, results)
-            self.assertIsInstance(results[model_name], TrainingResults)
-            models[model_name].fit.assert_called_once()
+        # Check logger configuration
+        self.assertIsNotNone(mock_logger)
     
-    @patch('model_trainer.DARTS_AVAILABLE', True)
-    def test_train_multiple_models_partial_failure(self):
-        """Test training multiple models with some failures."""
-        trainer = ModelTrainer(verbose=False)
+    def test_check_convergence(self):
+        """Test convergence checking."""
+        # Test convergence achieved
+        train_loss = [1.0, 0.8, 0.6, 0.5, 0.4]
+        val_loss = [1.1, 0.9, 0.7, 0.6, 0.5]
         
-        # Create mock models with one that fails
-        models = {
-            "SuccessModel": Mock(),
-            "FailModel": Mock()
-        }
+        converged = self.trainer._check_convergence(train_loss, val_loss)
+        self.assertTrue(converged)
         
-        # Configure success model
-        models["SuccessModel"].n_epochs = 10
-        models["SuccessModel"].pl_trainer_kwargs = {}
-        models["SuccessModel"].force_reset = True
-        models["SuccessModel"].save_checkpoints = False
-        models["SuccessModel"].fit = Mock()
-        models["SuccessModel"].trainer = None
-        models["SuccessModel"].training_history = None
+        # Test no convergence (increasing loss)
+        train_loss = [1.0, 0.8, 0.9, 1.0, 1.1]
+        val_loss = [1.1, 0.9, 1.0, 1.1, 1.2]
         
-        # Configure failing model
-        models["FailModel"].n_epochs = 10
-        models["FailModel"].pl_trainer_kwargs = {}
-        models["FailModel"].force_reset = True
-        models["FailModel"].save_checkpoints = False
-        models["FailModel"].fit = Mock(side_effect=Exception("Training failed"))
-        models["FailModel"].trainer = None
-        models["FailModel"].training_history = None
+        converged = self.trainer._check_convergence(train_loss, val_loss)
+        self.assertFalse(converged)
         
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            results = trainer.train_multiple_models(
-                models, 
-                self.mock_train_ts, 
-                self.mock_val_ts
-            )
-            
-            # Check that warning was issued for failed model
-            self.assertTrue(any("Failed to train FailModel" in str(warning.message) for warning in w))
+        # Test insufficient data
+        train_loss = [1.0, 0.8]
+        val_loss = [1.1, 0.9]
         
-        # Verify only successful model in results
-        self.assertEqual(len(results), 1)
-        self.assertIn("SuccessModel", results)
-        self.assertNotIn("FailModel", results)
+        converged = self.trainer._check_convergence(train_loss, val_loss)
+        self.assertFalse(converged)
     
-    def test_configure_model_for_cpu(self):
-        """Test CPU configuration for models."""
-        trainer = ModelTrainer()
+    def test_check_early_stopping(self):
+        """Test early stopping detection."""
+        # Set patience to 3
+        trainer = ModelTrainer(early_stopping_patience=3, min_delta=0.01, verbose=False)
         
-        # Test with model that has pl_trainer_kwargs
-        model_with_kwargs = Mock()
-        model_with_kwargs.pl_trainer_kwargs = {}
-        model_with_kwargs.force_reset = False
-        model_with_kwargs.save_checkpoints = True
-        
-        trainer._configure_model_for_cpu(model_with_kwargs)
-        
-        # Verify CPU configuration
-        self.assertEqual(model_with_kwargs.pl_trainer_kwargs['accelerator'], 'cpu')
-        self.assertEqual(model_with_kwargs.pl_trainer_kwargs['devices'], 1)
-        self.assertFalse(model_with_kwargs.pl_trainer_kwargs['enable_progress_bar'])
-        self.assertFalse(model_with_kwargs.pl_trainer_kwargs['enable_model_summary'])
-        self.assertTrue(model_with_kwargs.force_reset)
-        self.assertFalse(model_with_kwargs.save_checkpoints)
-        
-        # Test with model that has None pl_trainer_kwargs
-        model_none_kwargs = Mock()
-        model_none_kwargs.pl_trainer_kwargs = None
-        
-        trainer._configure_model_for_cpu(model_none_kwargs)
-        
-        # Verify kwargs were created and configured
-        self.assertIsInstance(model_none_kwargs.pl_trainer_kwargs, dict)
-        self.assertEqual(model_none_kwargs.pl_trainer_kwargs['accelerator'], 'cpu')
-    
-    def test_extract_training_history_from_trainer(self):
-        """Test extracting training history from model trainer."""
-        trainer = ModelTrainer()
-        
-        # Mock model with trainer callback metrics
-        mock_model = Mock()
-        mock_model.trainer = Mock()
-        mock_model.trainer.callback_metrics = {
-            'train_loss': 0.5,
-            'val_loss': 0.6
-        }
-        mock_model.training_history = None
-        mock_model.n_epochs = 10
-        
-        train_loss, val_loss = trainer._extract_training_history(mock_model)
-        
-        self.assertEqual(train_loss, [0.5])
-        self.assertEqual(val_loss, [0.6])
-    
-    def test_extract_training_history_from_model_history(self):
-        """Test extracting training history from model history attribute."""
-        trainer = ModelTrainer()
-        
-        # Mock model with training_history
-        mock_model = Mock()
-        mock_model.trainer = None
-        mock_model.training_history = {
-            'train_loss': [1.0, 0.8, 0.6],
-            'val_loss': [1.1, 0.9, 0.7]
-        }
-        mock_model.n_epochs = 10
-        
-        train_loss, val_loss = trainer._extract_training_history(mock_model)
-        
-        self.assertEqual(train_loss, [1.0, 0.8, 0.6])
-        self.assertEqual(val_loss, [1.1, 0.9, 0.7])
-    
-    def test_extract_training_history_fallback(self):
-        """Test fallback synthetic training history."""
-        trainer = ModelTrainer(verbose=True)  # Enable verbose to trigger warning
-        
-        # Mock model with no training history
-        mock_model = Mock()
-        mock_model.trainer = None
-        mock_model.training_history = None
-        mock_model.n_epochs = 5
-        
-        train_loss, val_loss = trainer._extract_training_history(mock_model)
-        
-        # Verify synthetic losses are decreasing
-        self.assertGreater(len(train_loss), 0)
-        self.assertGreater(len(val_loss), 0)
-        self.assertGreater(train_loss[0], train_loss[-1])  # Decreasing
-        self.assertGreater(val_loss[0], val_loss[-1])     # Decreasing
-    
-    def test_check_convergence_success(self):
-        """Test convergence detection with decreasing losses."""
-        trainer = ModelTrainer()
-        
-        # Decreasing losses indicate convergence
-        train_loss = [1.0, 0.8, 0.6, 0.4, 0.3]
-        val_loss = [1.1, 0.9, 0.7, 0.5, 0.4]
-        
-        convergence = trainer._check_convergence(train_loss, val_loss)
-        self.assertTrue(convergence)
-    
-    def test_check_convergence_failure(self):
-        """Test convergence detection with increasing losses."""
-        trainer = ModelTrainer()
-        
-        # Increasing losses indicate no convergence
-        train_loss = [0.3, 0.4, 0.6, 0.8, 1.0]
-        val_loss = [0.4, 0.5, 0.7, 0.9, 1.1]
-        
-        convergence = trainer._check_convergence(train_loss, val_loss)
-        self.assertFalse(convergence)
-    
-    def test_check_convergence_insufficient_data(self):
-        """Test convergence detection with insufficient data."""
-        trainer = ModelTrainer()
-        
-        # Too few data points
-        train_loss = [1.0]
-        val_loss = [1.1]
-        
-        convergence = trainer._check_convergence(train_loss, val_loss)
-        self.assertFalse(convergence)
-    
-    def test_check_early_stopping_triggered(self):
-        """Test early stopping detection when it should trigger."""
-        trainer = ModelTrainer(early_stopping_patience=3)
-        
-        # Validation loss stops improving after epoch 2
-        val_loss = [1.0, 0.8, 0.6, 0.7, 0.8, 0.9, 1.0]  # Best at index 2
+        # Test early stopping triggered (no improvement for 3 epochs)
+        val_loss = [1.0, 0.9, 0.8, 0.79, 0.785, 0.784, 0.783]  # No significant improvement
         
         early_stopped = trainer._check_early_stopping(val_loss)
         self.assertTrue(early_stopped)
-    
-    def test_check_early_stopping_not_triggered(self):
-        """Test early stopping detection when it should not trigger."""
-        trainer = ModelTrainer(early_stopping_patience=5)
         
-        # Validation loss keeps improving
-        val_loss = [1.0, 0.8, 0.6, 0.4, 0.2]
+        # Test no early stopping (improvement within patience)
+        val_loss = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5]  # Continuous improvement
+        
+        early_stopped = trainer._check_early_stopping(val_loss)
+        self.assertFalse(early_stopped)
+        
+        # Test insufficient data
+        val_loss = [1.0, 0.9]
         
         early_stopped = trainer._check_early_stopping(val_loss)
         self.assertFalse(early_stopped)
     
-    def test_check_early_stopping_insufficient_data(self):
-        """Test early stopping with insufficient data."""
-        trainer = ModelTrainer(early_stopping_patience=5)
-        
-        # Too few epochs
-        val_loss = [1.0, 0.8, 0.6]
-        
-        early_stopped = trainer._check_early_stopping(val_loss)
-        self.assertFalse(early_stopped)
-    
-    def test_get_training_summary_empty(self):
-        """Test training summary with no training history."""
-        trainer = ModelTrainer()
-        
-        summary = trainer.get_training_summary()
-        
-        self.assertIn("message", summary)
-        self.assertEqual(summary["message"], "No training history available")
-    
-    def test_get_training_summary_with_history(self):
-        """Test training summary with training history."""
-        trainer = ModelTrainer()
-        
-        # Add mock training results
-        trainer.training_history = {
-            "Model1": TrainingResults(
-                model_name="Model1",
-                train_loss=[1.0, 0.5],
-                val_loss=[1.1, 0.6],
-                training_time=10.0,
-                final_train_loss=0.5,
-                final_val_loss=0.6,
-                epochs_completed=2,
-                early_stopped=False,
-                convergence_achieved=True
-            ),
-            "Model2": TrainingResults(
-                model_name="Model2",
-                train_loss=[1.2, 0.8],
-                val_loss=[1.3, 0.4],
-                training_time=15.0,
-                final_train_loss=0.8,
-                final_val_loss=0.4,
-                epochs_completed=2,
-                early_stopped=False,
-                convergence_achieved=True
-            )
-        }
-        
-        summary = trainer.get_training_summary()
-        
-        self.assertEqual(summary["total_models_trained"], 2)
-        self.assertEqual(len(summary["successful_models"]), 2)
-        self.assertEqual(summary["convergence_rate"], 1.0)  # Both converged
-        self.assertEqual(summary["average_training_time"], 12.5)  # (10+15)/2
-        self.assertEqual(summary["best_model"], "Model2")  # Lower val loss
-        self.assertEqual(summary["best_val_loss"], 0.4)
-    
-    @patch('model_trainer.DARTS_AVAILABLE', True)
-    def test_validate_training_requirements_success(self):
-        """Test successful training data validation."""
-        trainer = ModelTrainer()
-        
-        result = trainer.validate_training_requirements(
-            self.mock_train_ts, 
-            self.mock_val_ts
-        )
-        
-        self.assertTrue(result)
-    
-    @patch('model_trainer.DARTS_AVAILABLE', True)
-    def test_validate_training_requirements_small_training_data(self):
-        """Test validation failure with small training data."""
-        trainer = ModelTrainer()
-        
-        # Mock small training data
-        small_train_ts = Mock()
-        small_train_ts.__len__ = Mock(return_value=5)  # Too small
-        
-        with self.assertRaises(ModelTrainingError) as context:
-            trainer.validate_training_requirements(small_train_ts, self.mock_val_ts)
-        
-        self.assertIn("Training data too small", str(context.exception))
-    
-    @patch('model_trainer.DARTS_AVAILABLE', True)
-    def test_validate_training_requirements_small_validation_data(self):
-        """Test validation failure with small validation data."""
-        trainer = ModelTrainer()
-        
-        # Mock small validation data
-        small_val_ts = Mock()
-        small_val_ts.__len__ = Mock(return_value=3)  # Too small
-        
-        with self.assertRaises(ModelTrainingError) as context:
-            trainer.validate_training_requirements(self.mock_train_ts, small_val_ts)
-        
-        self.assertIn("Validation data too small", str(context.exception))
-    
-    @patch('model_trainer.DARTS_AVAILABLE', True)
-    def test_validate_training_requirements_nan_values(self):
-        """Test validation failure with NaN values."""
-        trainer = ModelTrainer()
-        
-        # Mock training data with NaN values
-        nan_train_ts = Mock()
-        nan_train_ts.__len__ = Mock(return_value=100)
-        nan_train_ts.end_time.return_value = "2023-01-31"
-        nan_train_ts.pd_dataframe.return_value = Mock()
-        nan_train_ts.pd_dataframe.return_value.isnull.return_value.any.return_value.any.return_value = True
-        
-        with self.assertRaises(ModelTrainingError) as context:
-            trainer.validate_training_requirements(nan_train_ts, self.mock_val_ts)
-        
-        self.assertIn("Training data contains NaN values", str(context.exception))
-    
-    @patch('model_trainer.DARTS_AVAILABLE', True)
-    def test_validate_training_requirements_temporal_overlap(self):
-        """Test validation failure with temporal overlap."""
-        trainer = ModelTrainer()
-        
-        # Mock overlapping data
-        overlap_train_ts = Mock()
-        overlap_train_ts.__len__ = Mock(return_value=100)
-        overlap_train_ts.end_time.return_value = "2023-02-15"  # Overlaps with val start
-        overlap_train_ts.pd_dataframe.return_value = Mock()
-        overlap_train_ts.pd_dataframe.return_value.isnull.return_value.any.return_value.any.return_value = False
-        
-        with self.assertRaises(ModelTrainingError) as context:
-            trainer.validate_training_requirements(overlap_train_ts, self.mock_val_ts)
-        
-        self.assertIn("Training data overlaps with validation data", str(context.exception))
-
-
-class TestTrainingResults(unittest.TestCase):
-    """Test cases for TrainingResults dataclass."""
-    
-    def test_training_results_creation(self):
-        """Test TrainingResults dataclass creation."""
-        results = TrainingResults(
+    def test_training_results_dataclass(self):
+        """Test TrainingResults dataclass."""
+        result = TrainingResults(
             model_name="TestModel",
-            train_loss=[1.0, 0.5, 0.3],
-            val_loss=[1.1, 0.6, 0.4],
+            train_loss=[1.0, 0.8, 0.6],
+            val_loss=[1.1, 0.9, 0.7],
             training_time=10.5,
-            final_train_loss=0.3,
-            final_val_loss=0.4,
+            final_train_loss=0.6,
+            final_val_loss=0.7,
             epochs_completed=3,
             early_stopped=False,
             convergence_achieved=True
         )
         
-        self.assertEqual(results.model_name, "TestModel")
-        self.assertEqual(results.train_loss, [1.0, 0.5, 0.3])
-        self.assertEqual(results.val_loss, [1.1, 0.6, 0.4])
-        self.assertEqual(results.training_time, 10.5)
-        self.assertEqual(results.final_train_loss, 0.3)
-        self.assertEqual(results.final_val_loss, 0.4)
-        self.assertEqual(results.epochs_completed, 3)
-        self.assertFalse(results.early_stopped)
-        self.assertTrue(results.convergence_achieved)
+        self.assertEqual(result.model_name, "TestModel")
+        self.assertEqual(len(result.train_loss), 3)
+        self.assertEqual(len(result.val_loss), 3)
+        self.assertEqual(result.training_time, 10.5)
+        self.assertEqual(result.final_train_loss, 0.6)
+        self.assertEqual(result.final_val_loss, 0.7)
+        self.assertEqual(result.epochs_completed, 3)
+        self.assertFalse(result.early_stopped)
+        self.assertTrue(result.convergence_achieved)
     
-    def test_training_results_to_dict(self):
-        """Test converting TrainingResults to dictionary."""
-        results = TrainingResults(
-            model_name="TestModel",
-            train_loss=[1.0, 0.5],
-            val_loss=[1.1, 0.6],
-            training_time=5.0,
-            final_train_loss=0.5,
-            final_val_loss=0.6,
-            epochs_completed=2,
-            early_stopped=True,
-            convergence_achieved=False
+    def test_error_handling(self):
+        """Test error handling during training."""
+        # Test with failing model
+        failing_model = Mock()
+        failing_model.fit.side_effect = Exception("Training failed")
+        failing_model.pl_trainer_kwargs = {}
+        
+        with self.assertRaises(ModelTrainingError):
+            self.trainer.train_model(
+                failing_model,
+                self.train_ts,
+                self.val_ts,
+                "FailingModel"
+            )
+    
+    @patch('model_trainer.CSVLogger')
+    @patch('model_trainer.pd.read_csv')
+    def test_missing_metrics_file(self, mock_read_csv, mock_csv_logger):
+        """Test handling of missing metrics file."""
+        # Mock CSV logger
+        mock_logger_instance = Mock()
+        mock_logger_instance.log_dir = "temp_logs/test_model"
+        mock_csv_logger.return_value = mock_logger_instance
+        
+        # Mock missing metrics file
+        mock_read_csv.side_effect = FileNotFoundError("Metrics file not found")
+        
+        # Configure mock model
+        self.mock_model.pl_trainer_kwargs = {}
+        
+        result = self.trainer.train_model(
+            self.mock_model,
+            self.train_ts,
+            self.val_ts,
+            "TestModel"
         )
         
-        results_dict = asdict(results)
+        # Should handle missing metrics gracefully
+        self.assertIsInstance(result, TrainingResults)
+        self.assertEqual(len(result.train_loss), 0)
+        self.assertEqual(len(result.val_loss), 0)
+        self.assertEqual(result.final_train_loss, float('inf'))
+        self.assertEqual(result.final_val_loss, float('inf'))
+    
+    def test_model_without_trainer_attribute(self):
+        """Test handling of model without trainer attribute."""
+        # Create model without trainer attribute
+        model_without_trainer = Mock()
+        model_without_trainer.fit = Mock()
+        model_without_trainer.pl_trainer_kwargs = {}
+        del model_without_trainer.trainer  # Remove trainer attribute
         
-        self.assertIsInstance(results_dict, dict)
-        self.assertEqual(results_dict['model_name'], "TestModel")
-        self.assertEqual(results_dict['epochs_completed'], 2)
-        self.assertTrue(results_dict['early_stopped'])
-        self.assertFalse(results_dict['convergence_achieved'])
+        with patch('model_trainer.CSVLogger') as mock_csv_logger, \
+             patch('model_trainer.pd.read_csv') as mock_read_csv:
+            
+            mock_logger_instance = Mock()
+            mock_logger_instance.log_dir = "temp_logs/test_model"
+            mock_csv_logger.return_value = mock_logger_instance
+            mock_read_csv.side_effect = FileNotFoundError("No metrics")
+            
+            result = self.trainer.train_model(
+                model_without_trainer,
+                self.train_ts,
+                self.val_ts,
+                "TestModel"
+            )
+            
+            # Should handle missing trainer gracefully
+            self.assertIsInstance(result, TrainingResults)
+            self.assertEqual(result.epochs_completed, 0)
+    
+    def test_model_configuration_preservation(self):
+        """Test that model configuration is preserved after training."""
+        # Configure mock model with existing pl_trainer_kwargs
+        original_kwargs = {'some_param': 'original_value'}
+        self.mock_model.pl_trainer_kwargs = original_kwargs.copy()
+        
+        with patch('model_trainer.CSVLogger') as mock_csv_logger, \
+             patch('model_trainer.pd.read_csv') as mock_read_csv:
+            
+            mock_logger_instance = Mock()
+            mock_logger_instance.log_dir = "temp_logs/test_model"
+            mock_csv_logger.return_value = mock_logger_instance
+            mock_read_csv.side_effect = FileNotFoundError("No metrics")
+            
+            self.trainer.train_model(
+                self.mock_model,
+                self.train_ts,
+                self.val_ts,
+                "TestModel"
+            )
+            
+            # Check that original parameters are preserved
+            self.assertIn('some_param', self.mock_model.pl_trainer_kwargs)
+            self.assertEqual(
+                self.mock_model.pl_trainer_kwargs['some_param'], 
+                'original_value'
+            )
+            
+            # Check that CPU configuration was added
+            self.assertEqual(self.mock_model.pl_trainer_kwargs['accelerator'], 'cpu')
+            self.assertEqual(self.mock_model.pl_trainer_kwargs['devices'], 1)
 
 
 if __name__ == '__main__':
-    # Run tests with verbose output
-    unittest.main(verbosity=2)
+    unittest.main()

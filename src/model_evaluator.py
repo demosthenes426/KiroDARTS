@@ -92,6 +92,193 @@ class ModelEvaluator:
         except Exception as e:
             raise ModelEvaluationError(f"Failed to calculate metrics: {e}") from e
     
+    def evaluate_model(self, 
+                      model: ForecastingModel,
+                      test_ts: TimeSeries,
+                      model_name: str = "Unknown",
+                      prediction_length: Optional[int] = None) -> EvaluationResults:
+        """
+        Evaluate a trained DARTS model on test data.
+        
+        Args:
+            model: Trained DARTS model
+            test_ts: Test TimeSeries data
+            model_name: Name of the model for logging
+            prediction_length: Number of steps to predict (defaults to 5)
+            
+        Returns:
+            EvaluationResults: Evaluation results and metrics
+            
+        Raises:
+            ModelEvaluationError: If evaluation fails
+        """
+        if not DARTS_AVAILABLE:
+            raise ModelEvaluationError("DARTS library is not available. Please install darts.")
+        
+        if prediction_length is None:
+            prediction_length = 5
+        
+        if self.verbose:
+            print(f"\n🎯 Evaluating {model_name}...")
+            print(f"   Test data: {len(test_ts)} points")
+            print(f"   Prediction length: {prediction_length}")
+        
+        try:
+            import time
+            start_time = time.time()
+            
+            # Validate requirements
+            self.validate_evaluation_requirements(test_ts, prediction_length)
+            
+            # Generate predictions
+            predictions = self._generate_predictions(model, test_ts, prediction_length)
+            
+            # Extract actual values
+            actuals = self._extract_actuals(test_ts, prediction_length)
+            
+            # Calculate metrics
+            mae = self._calculate_mae(predictions, actuals)
+            rmse = self._calculate_rmse(predictions, actuals)
+            mape = self._calculate_mape(predictions, actuals)
+            
+            # Check performance degradation
+            performance_degraded = self._check_performance_degradation(model_name, mae, rmse, mape)
+            
+            # Compare to baseline if available
+            baseline_comparison = None
+            if model_name in self.baseline_metrics:
+                baseline_comparison = self._compare_to_baseline(model_name, mae, rmse, mape)
+            
+            evaluation_time = time.time() - start_time
+            
+            if self.verbose:
+                print(f"   ✓ Evaluation completed in {evaluation_time:.2f}s")
+                print(f"   📊 MAE: {mae:.6f}")
+                print(f"   📊 RMSE: {rmse:.6f}")
+                print(f"   📊 MAPE: {mape:.2f}%")
+                if performance_degraded:
+                    print(f"   ⚠️  Performance degradation detected")
+            
+            results = EvaluationResults(
+                model_name=model_name,
+                predictions=predictions,
+                actuals=actuals,
+                mae=mae,
+                rmse=rmse,
+                mape=mape,
+                prediction_length=prediction_length,
+                evaluation_time=evaluation_time,
+                performance_degraded=performance_degraded,
+                baseline_comparison=baseline_comparison
+            )
+            
+            self.evaluation_history[model_name] = results
+            return results
+            
+        except Exception as e:
+            error_msg = f"Failed to evaluate {model_name}: {str(e)}"
+            if self.verbose:
+                print(f"   ❌ {error_msg}")
+            raise ModelEvaluationError(error_msg) from e
+
+    def evaluate_model(self, 
+                     model: ForecastingModel, 
+                     test_ts: TimeSeries, 
+                     model_name: str = "Unknown",
+                     prediction_length: Optional[int] = None) -> EvaluationResults:
+        """
+        Evaluate a single model and return comprehensive results.
+        
+        Args:
+            model: Trained DARTS forecasting model
+            test_ts: Test TimeSeries data
+            model_name: Name of the model for logging
+            prediction_length: Number of steps to predict (defaults to 5)
+            
+        Returns:
+            EvaluationResults: Comprehensive evaluation results
+            
+        Raises:
+            ModelEvaluationError: If evaluation fails
+        """
+        if not DARTS_AVAILABLE:
+            raise ModelEvaluationError("DARTS library is not available. Please install darts.")
+        
+        # Default prediction length
+        if prediction_length is None:
+            prediction_length = 5
+        
+        if self.verbose:
+            print(f"\n🎯 Evaluating {model_name}...")
+            print(f"   Test data: {len(test_ts)} points")
+            print(f"   Prediction length: {prediction_length}")
+        
+        try:
+            import time
+            start_time = time.time()
+            
+            # Validate evaluation requirements
+            self.validate_evaluation_requirements(test_ts, prediction_length)
+            
+            # Generate predictions
+            predictions = self._generate_predictions(model, test_ts, prediction_length)
+            
+            # Extract actual values for comparison
+            actuals = self._extract_actuals(test_ts, prediction_length)
+            
+            # Ensure arrays have the same length
+            min_length = min(len(predictions), len(actuals))
+            predictions = predictions[:min_length]
+            actuals = actuals[:min_length]
+            
+            # Calculate metrics
+            mae = self._calculate_mae(predictions, actuals)
+            rmse = self._calculate_rmse(predictions, actuals)
+            mape = self._calculate_mape(predictions, actuals)
+            
+            evaluation_time = time.time() - start_time
+            
+            # Check for performance degradation
+            performance_degraded = self._check_performance_degradation(model_name, mae, rmse, mape)
+            
+            # Compare to baseline if available
+            baseline_comparison = None
+            if model_name in self.baseline_metrics:
+                baseline_comparison = self._compare_to_baseline(model_name, mae, rmse, mape)
+            
+            if self.verbose:
+                print(f"   ✓ MAE: {mae:.6f}")
+                print(f"   ✓ RMSE: {rmse:.6f}")
+                print(f"   ✓ MAPE: {mape:.2f}%")
+                print(f"   ✓ Evaluation time: {evaluation_time:.2f}s")
+                if performance_degraded:
+                    print(f"   ⚠️  Performance degraded vs baseline")
+            
+            # Create results object
+            results = EvaluationResults(
+                model_name=model_name,
+                predictions=predictions,
+                actuals=actuals,
+                mae=mae,
+                rmse=rmse,
+                mape=mape,
+                prediction_length=min_length,
+                evaluation_time=evaluation_time,
+                performance_degraded=performance_degraded,
+                baseline_comparison=baseline_comparison
+            )
+            
+            # Store in evaluation history
+            self.evaluation_history[model_name] = results
+            
+            return results
+            
+        except Exception as e:
+            error_msg = f"Failed to evaluate {model_name}: {str(e)}"
+            if self.verbose:
+                print(f"   ❌ {error_msg}")
+            raise ModelEvaluationError(error_msg) from e
+
     def evaluate_multiple_models(self,
                                models: Dict[str, ForecastingModel],
                                test_ts: TimeSeries,

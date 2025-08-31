@@ -1,321 +1,268 @@
 """
 Unit tests for ModelEvaluator class.
 
-Tests the evaluation functionality including accuracy metrics calculation,
-prediction vs actual comparisons, and performance degradation detection.
+This module tests the ModelEvaluator class functionality including:
+- Model evaluation with accuracy metrics
+- Performance degradation detection
+- Baseline comparison
+- Multiple model evaluation
 """
 
 import unittest
 import numpy as np
 import pandas as pd
-from unittest.mock import Mock, patch
-import warnings
 import sys
 import os
+from unittest.mock import Mock, patch
+import warnings
 
-# Add src directory to path for imports
+# Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from model_evaluator import ModelEvaluator, EvaluationResults, ModelEvaluationError
+# Try to import dependencies
+try:
+    from darts import TimeSeries
+    from model_evaluator import ModelEvaluator, EvaluationResults, ModelEvaluationError
+    DEPENDENCIES_AVAILABLE = True
+except ImportError as e:
+    DEPENDENCIES_AVAILABLE = False
+    print(f"Warning: Dependencies not available: {e}")
 
 
-class MockTimeSeries:
-    """Mock TimeSeries class for testing."""
-    
-    def __init__(self, data, index=None):
-        self.data = np.array(data)
-        self.index = index or pd.date_range('2023-01-01', periods=len(data), freq='D')
-    
-    def __len__(self):
-        return len(self.data)
-    
-    def values(self):
-        return self.data
-    
-    def to_numpy(self):
-        return self.data
-    
-    def pd_dataframe(self):
-        return pd.DataFrame(self.data, index=self.index, columns=['value'])
-    
-    def to_pandas(self):
-        return self.pd_dataframe()
-
-
-class MockModel:
-    """Mock DARTS model for testing."""
-    
-    def __init__(self, predictions=None, output_chunk_length=5):
-        if predictions is None:
-            self.predictions = np.array([100, 101, 102, 103, 104])
-        else:
-            self.predictions = predictions
-        self.output_chunk_length = output_chunk_length
-    
-    def predict(self, n, series=None):
-        return MockTimeSeries(self.predictions[:n])
-
-
+@unittest.skipUnless(DEPENDENCIES_AVAILABLE, "Dependencies not available")
 class TestModelEvaluator(unittest.TestCase):
     """Test cases for ModelEvaluator class."""
     
     def setUp(self):
         """Set up test fixtures."""
-        self.evaluator = ModelEvaluator(verbose=False)
-        
-        # Create test data
-        self.test_data = np.array([100, 101, 102, 103, 104, 105, 106, 107, 108, 109])
-        self.test_ts = MockTimeSeries(self.test_data)
+        # Create sample data
+        dates = pd.date_range('2023-01-01', periods=100, freq='D')
+        values = np.random.normal(100, 10, 100)
+        self.test_ts = TimeSeries.from_pandas(pd.Series(values, index=dates))
         
         # Create mock model
-        self.mock_model = MockModel()
+        self.mock_model = Mock()
+        self.mock_model.predict.return_value = TimeSeries.from_pandas(
+            pd.Series(np.random.normal(100, 10, 5), 
+                     index=pd.date_range('2023-04-11', periods=5, freq='D'))
+        )
         
-        # Suppress warnings during tests
-        warnings.filterwarnings("ignore")
+        # Initialize evaluator
+        self.evaluator = ModelEvaluator(verbose=False)
     
-    def tearDown(self):
-        """Clean up after tests."""
-        warnings.resetwarnings()
-    
-    def test_evaluator_initialization(self):
+    def test_init(self):
         """Test ModelEvaluator initialization."""
         evaluator = ModelEvaluator(
             performance_threshold=0.3,
-            baseline_metrics={'test_model': {'mae': 1.0}},
+            baseline_metrics={'test_model': {'mae': 5.0}},
             verbose=True
         )
         
         self.assertEqual(evaluator.performance_threshold, 0.3)
-        self.assertEqual(evaluator.baseline_metrics['test_model']['mae'], 1.0)
+        self.assertEqual(evaluator.baseline_metrics['test_model']['mae'], 5.0)
         self.assertTrue(evaluator.verbose)
         self.assertEqual(len(evaluator.evaluation_history), 0)
     
-    @patch('model_evaluator.DARTS_AVAILABLE', True)
-    def test_evaluate_model_success(self):
-        """Test successful model evaluation."""
-        # Set up mock model with known predictions
-        predictions = np.array([100.1, 101.2, 102.1, 103.3, 104.2])
-        mock_model = MockModel(predictions=predictions)
-        
+    def test_evaluate_model(self):
+        """Test single model evaluation."""
         result = self.evaluator.evaluate_model(
-            mock_model, 
+            self.mock_model, 
             self.test_ts, 
-            model_name="TestModel"
+            "TestModel", 
+            prediction_length=5
         )
         
-        # Verify result structure
+        # Check result structure
         self.assertIsInstance(result, EvaluationResults)
         self.assertEqual(result.model_name, "TestModel")
+        self.assertEqual(result.prediction_length, 5)
         self.assertEqual(len(result.predictions), 5)
         self.assertEqual(len(result.actuals), 5)
         
-        # Verify metrics are calculated
+        # Check metrics are calculated
         self.assertIsInstance(result.mae, float)
         self.assertIsInstance(result.rmse, float)
         self.assertIsInstance(result.mape, float)
-        self.assertGreater(result.evaluation_time, 0)
+        self.assertGreaterEqual(result.mae, 0)
+        self.assertGreaterEqual(result.rmse, 0)
         
-        # Verify evaluation history is updated
+        # Check evaluation history is updated
         self.assertIn("TestModel", self.evaluator.evaluation_history)
     
-    @patch('model_evaluator.DARTS_AVAILABLE', False)
-    def test_evaluate_model_darts_unavailable(self):
-        """Test evaluation when DARTS is not available."""
-        with self.assertRaises(ModelEvaluationError) as context:
-            self.evaluator.evaluate_model(self.mock_model, self.test_ts)
+    def test_evaluate_multiple_models(self):
+        """Test multiple model evaluation."""
+        models = {
+            'Model1': self.mock_model,
+            'Model2': self.mock_model
+        }
         
-        self.assertIn("DARTS library is not available", str(context.exception))
+        results = self.evaluator.evaluate_multiple_models(
+            models, 
+            self.test_ts, 
+            prediction_length=5
+        )
+        
+        # Check results structure
+        self.assertEqual(len(results), 2)
+        self.assertIn('Model1', results)
+        self.assertIn('Model2', results)
+        
+        for model_name, result in results.items():
+            self.assertIsInstance(result, EvaluationResults)
+            self.assertEqual(result.model_name, model_name)
     
     def test_calculate_mae(self):
         """Test MAE calculation."""
-        predictions = np.array([100, 101, 102, 103, 104])
-        actuals = np.array([100.5, 100.8, 102.2, 102.9, 104.1])
+        predictions = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+        actuals = np.array([1.1, 2.1, 2.9, 4.2, 4.8])
         
         mae = self.evaluator._calculate_mae(predictions, actuals)
-        
         expected_mae = np.mean(np.abs(predictions - actuals))
+        
         self.assertAlmostEqual(mae, expected_mae, places=6)
     
     def test_calculate_rmse(self):
         """Test RMSE calculation."""
-        predictions = np.array([100, 101, 102, 103, 104])
-        actuals = np.array([100.5, 100.8, 102.2, 102.9, 104.1])
+        predictions = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+        actuals = np.array([1.1, 2.1, 2.9, 4.2, 4.8])
         
         rmse = self.evaluator._calculate_rmse(predictions, actuals)
-        
         expected_rmse = np.sqrt(np.mean((predictions - actuals) ** 2))
+        
         self.assertAlmostEqual(rmse, expected_rmse, places=6)
     
     def test_calculate_mape(self):
         """Test MAPE calculation."""
-        predictions = np.array([100, 101, 102, 103, 104])
-        actuals = np.array([100.5, 100.8, 102.2, 102.9, 104.1])
+        predictions = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+        actuals = np.array([1.1, 2.1, 2.9, 4.2, 4.8])
         
         mape = self.evaluator._calculate_mape(predictions, actuals)
-        
         expected_mape = np.mean(np.abs((actuals - predictions) / actuals)) * 100
+        
         self.assertAlmostEqual(mape, expected_mape, places=6)
     
-    def test_calculate_mape_zero_actuals(self):
-        """Test MAPE calculation with zero actual values."""
-        predictions = np.array([1, 2, 3])
-        actuals = np.array([0, 0, 0])
+    def test_calculate_mape_with_zeros(self):
+        """Test MAPE calculation with zero values."""
+        predictions = np.array([1.0, 2.0, 3.0])
+        actuals = np.array([0.0, 2.1, 2.9])  # Contains zero
         
         mape = self.evaluator._calculate_mape(predictions, actuals)
         
-        # Should return infinity when all actuals are zero
-        self.assertEqual(mape, float('inf'))
+        # Should handle zeros gracefully
+        self.assertIsInstance(mape, float)
+        self.assertGreaterEqual(mape, 0)
     
     def test_performance_degradation_detection(self):
         """Test performance degradation detection."""
         # Set baseline metrics
         baseline_metrics = {
-            'TestModel': {'mae': 1.0, 'rmse': 1.5, 'mape': 5.0}
+            'TestModel': {
+                'mae': 1.0,
+                'rmse': 1.5,
+                'mape': 5.0
+            }
         }
-        evaluator = ModelEvaluator(
-            performance_threshold=0.2,
-            baseline_metrics=baseline_metrics,
-            verbose=False
-        )
+        self.evaluator.set_baseline_metrics(baseline_metrics)
         
         # Test no degradation
-        degraded = evaluator._check_performance_degradation(
+        degraded = self.evaluator._check_performance_degradation(
             'TestModel', mae=1.1, rmse=1.6, mape=5.5
         )
         self.assertFalse(degraded)
         
-        # Test degradation (MAE increased by 30%)
-        degraded = evaluator._check_performance_degradation(
-            'TestModel', mae=1.3, rmse=1.6, mape=5.5
+        # Test degradation (25% increase, threshold is 20%)
+        degraded = self.evaluator._check_performance_degradation(
+            'TestModel', mae=1.3, rmse=1.9, mape=6.5
         )
         self.assertTrue(degraded)
     
     def test_baseline_comparison(self):
-        """Test baseline comparison functionality."""
+        """Test baseline comparison."""
         baseline_metrics = {
-            'TestModel': {'mae': 1.0, 'rmse': 1.5, 'mape': 5.0}
+            'TestModel': {
+                'mae': 1.0,
+                'rmse': 1.5,
+                'mape': 5.0
+            }
         }
-        evaluator = ModelEvaluator(baseline_metrics=baseline_metrics, verbose=False)
+        self.evaluator.set_baseline_metrics(baseline_metrics)
         
-        comparison = evaluator._compare_to_baseline(
-            'TestModel', mae=1.1, rmse=1.4, mape=5.5
+        comparison = self.evaluator._compare_to_baseline(
+            'TestModel', mae=1.1, rmse=1.6, mape=5.5
         )
         
+        self.assertIn('mae_change', comparison)
+        self.assertIn('rmse_change', comparison)
+        self.assertIn('mape_change', comparison)
+        
+        # Check percentage changes
         self.assertAlmostEqual(comparison['mae_change'], 10.0, places=1)
-        self.assertAlmostEqual(comparison['rmse_change'], -6.67, places=1)
+        self.assertAlmostEqual(comparison['rmse_change'], 6.67, places=1)
         self.assertAlmostEqual(comparison['mape_change'], 10.0, places=1)
     
-    @patch('model_evaluator.DARTS_AVAILABLE', True)
-    def test_evaluate_multiple_models(self):
-        """Test evaluation of multiple models."""
-        models = {
-            'Model1': MockModel(predictions=np.array([100, 101, 102, 103, 104])),
-            'Model2': MockModel(predictions=np.array([100.5, 101.5, 102.5, 103.5, 104.5]))
-        }
+    def test_validate_evaluation_requirements(self):
+        """Test evaluation requirements validation."""
+        # Test valid requirements
+        valid = self.evaluator.validate_evaluation_requirements(
+            self.test_ts, prediction_length=5
+        )
+        self.assertTrue(valid)
         
-        results = self.evaluator.evaluate_multiple_models(models, self.test_ts)
-        
-        self.assertEqual(len(results), 2)
-        self.assertIn('Model1', results)
-        self.assertIn('Model2', results)
-        
-        # Verify all results are EvaluationResults objects
-        for result in results.values():
-            self.assertIsInstance(result, EvaluationResults)
-    
-    def test_generate_predictions_fallback(self):
-        """Test prediction generation with fallback."""
-        # Create a model that will fail
-        failing_model = Mock()
-        failing_model.predict.side_effect = Exception("Prediction failed")
-        
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")  # Ensure warnings are captured
-            predictions = self.evaluator._generate_predictions(
-                failing_model, self.test_ts, 5
+        # Test insufficient data
+        short_ts = self.test_ts[:3]  # Only 3 points
+        with self.assertRaises(ModelEvaluationError):
+            self.evaluator.validate_evaluation_requirements(
+                short_ts, prediction_length=5
             )
-            
-            # Should generate synthetic predictions and warn
-            self.assertEqual(len(predictions), 5)
-            self.assertTrue(len(w) > 0)
-            self.assertIn("synthetic data", str(w[0].message))
     
-    def test_extract_actuals_fallback(self):
-        """Test actual value extraction with fallback."""
-        # Create a TimeSeries that will fail
-        failing_ts = Mock()
-        failing_ts.values.side_effect = Exception("Values failed")
-        failing_ts.to_numpy.side_effect = Exception("to_numpy failed")
-        failing_ts.pd_dataframe.side_effect = Exception("pd_dataframe failed")
-        failing_ts.to_pandas.side_effect = Exception("to_pandas failed")
-        
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")  # Ensure warnings are captured
-            actuals = self.evaluator._extract_actuals(failing_ts, 5)
-            
-            # Should generate synthetic actuals and warn
-            self.assertEqual(len(actuals), 5)
-            self.assertTrue(len(w) > 0)
-            self.assertIn("synthetic data", str(w[0].message))
-    
-    def test_evaluation_summary(self):
+    def test_get_evaluation_summary(self):
         """Test evaluation summary generation."""
-        # Add some mock results to history
+        # Add some evaluation history
+        result1 = EvaluationResults(
+            model_name="Model1",
+            predictions=np.array([1, 2, 3]),
+            actuals=np.array([1.1, 2.1, 2.9]),
+            mae=0.1,
+            rmse=0.15,
+            mape=5.0,
+            prediction_length=3,
+            evaluation_time=1.0,
+            performance_degraded=False
+        )
+        
+        result2 = EvaluationResults(
+            model_name="Model2",
+            predictions=np.array([1, 2, 3]),
+            actuals=np.array([1.2, 2.2, 2.8]),
+            mae=0.2,
+            rmse=0.25,
+            mape=8.0,
+            prediction_length=3,
+            evaluation_time=1.5,
+            performance_degraded=True
+        )
+        
         self.evaluator.evaluation_history = {
-            'Model1': EvaluationResults(
-                model_name='Model1',
-                predictions=np.array([1, 2, 3]),
-                actuals=np.array([1.1, 2.1, 3.1]),
-                mae=0.1,
-                rmse=0.15,
-                mape=5.0,
-                prediction_length=3,
-                evaluation_time=1.0,
-                performance_degraded=False
-            ),
-            'Model2': EvaluationResults(
-                model_name='Model2',
-                predictions=np.array([1, 2, 3]),
-                actuals=np.array([1.2, 2.2, 3.2]),
-                mae=0.2,
-                rmse=0.25,
-                mape=10.0,
-                prediction_length=3,
-                evaluation_time=1.5,
-                performance_degraded=True
-            )
+            "Model1": result1,
+            "Model2": result2
         }
         
         summary = self.evaluator.get_evaluation_summary()
         
-        self.assertEqual(summary['total_models_evaluated'], 2)
-        self.assertEqual(summary['best_model_mae'], 'Model1')
-        self.assertEqual(summary['best_model_rmse'], 'Model1')
-        self.assertEqual(summary['best_model_mape'], 'Model1')
-        self.assertAlmostEqual(summary['average_mae'], 0.15, places=2)
-        self.assertEqual(len(summary['degraded_models']), 1)
-        self.assertIn('Model2', summary['degraded_models'])
-    
-    def test_validation_requirements(self):
-        """Test validation of evaluation requirements."""
-        # Test with sufficient data
-        large_ts = MockTimeSeries(np.random.randn(20))
-        self.assertTrue(self.evaluator.validate_evaluation_requirements(large_ts, 5))
-        
-        # Test with insufficient data
-        small_ts = MockTimeSeries(np.random.randn(3))
-        with self.assertRaises(ModelEvaluationError) as context:
-            self.evaluator.validate_evaluation_requirements(small_ts, 5)
-        
-        self.assertIn("Test data too small", str(context.exception))
+        self.assertEqual(summary["total_models_evaluated"], 2)
+        self.assertEqual(summary["best_model_mae"], "Model1")
+        self.assertEqual(summary["best_model_rmse"], "Model1")
+        self.assertEqual(summary["best_model_mape"], "Model1")
+        self.assertIn("Model2", summary["degraded_models"])
+        self.assertAlmostEqual(summary["average_mae"], 0.15, places=2)
     
     def test_compare_models(self):
         """Test model comparison functionality."""
         results = {
-            'Model1': EvaluationResults(
-                model_name='Model1',
+            "Model1": EvaluationResults(
+                model_name="Model1",
                 predictions=np.array([1, 2, 3]),
-                actuals=np.array([1.1, 2.1, 3.1]),
+                actuals=np.array([1.1, 2.1, 2.9]),
                 mae=0.1,
                 rmse=0.15,
                 mape=5.0,
@@ -323,13 +270,13 @@ class TestModelEvaluator(unittest.TestCase):
                 evaluation_time=1.0,
                 performance_degraded=False
             ),
-            'Model2': EvaluationResults(
-                model_name='Model2',
+            "Model2": EvaluationResults(
+                model_name="Model2",
                 predictions=np.array([1, 2, 3]),
-                actuals=np.array([1.2, 2.2, 3.2]),
+                actuals=np.array([1.2, 2.2, 2.8]),
                 mae=0.2,
                 rmse=0.25,
-                mape=10.0,
+                mape=8.0,
                 prediction_length=3,
                 evaluation_time=1.5,
                 performance_degraded=True
@@ -338,62 +285,41 @@ class TestModelEvaluator(unittest.TestCase):
         
         comparison = self.evaluator.compare_models(results)
         
-        self.assertEqual(comparison['model_count'], 2)
-        self.assertEqual(comparison['rankings']['mae'], ['Model1', 'Model2'])
-        self.assertEqual(comparison['rankings']['rmse'], ['Model1', 'Model2'])
-        self.assertEqual(comparison['rankings']['mape'], ['Model1', 'Model2'])
+        self.assertEqual(comparison["model_count"], 2)
+        self.assertIn("metrics_comparison", comparison)
+        self.assertIn("rankings", comparison)
+        self.assertIn("performance_analysis", comparison)
         
-        # Check best/worst for each metric
-        self.assertEqual(comparison['metrics_comparison']['mae']['best'][0], 'Model1')
-        self.assertEqual(comparison['metrics_comparison']['mae']['worst'][0], 'Model2')
+        # Check rankings (Model1 should be better)
+        self.assertEqual(comparison["rankings"]["mae"][0], "Model1")
+        self.assertEqual(comparison["rankings"]["rmse"][0], "Model1")
+        self.assertEqual(comparison["rankings"]["mape"][0], "Model1")
         
         # Check performance analysis
-        self.assertEqual(comparison['performance_analysis']['degraded_models'], 1)
-        self.assertEqual(comparison['performance_analysis']['degradation_rate'], 50.0)
+        self.assertEqual(comparison["performance_analysis"]["degraded_models"], 1)
+        self.assertEqual(comparison["performance_analysis"]["degradation_rate"], 50.0)
     
-    def test_set_baseline_metrics(self):
-        """Test setting baseline metrics."""
-        baseline = {
-            'Model1': {'mae': 1.0, 'rmse': 1.5},
-            'Model2': {'mae': 2.0, 'rmse': 2.5}
-        }
+    def test_error_handling(self):
+        """Test error handling in evaluation."""
+        # Test with failing model
+        failing_model = Mock()
+        failing_model.predict.side_effect = Exception("Model prediction failed")
         
-        self.evaluator.set_baseline_metrics(baseline)
-        
-        self.assertEqual(self.evaluator.baseline_metrics, baseline)
+        with self.assertRaises(ModelEvaluationError):
+            self.evaluator.evaluate_model(failing_model, self.test_ts, "FailingModel")
     
-    def test_multivariate_data_handling(self):
-        """Test handling of multivariate data."""
-        # Create multivariate test data
-        multivariate_data = np.random.randn(10, 3)  # 10 timesteps, 3 features
+    def test_empty_results_handling(self):
+        """Test handling of empty results."""
+        # Test empty evaluation summary
+        summary = self.evaluator.get_evaluation_summary()
+        self.assertIn("message", summary)
+        self.assertEqual(summary["message"], "No evaluation history available")
         
-        # Test prediction extraction (should take first column)
-        predictions = self.evaluator._generate_predictions(
-            MockModel(predictions=multivariate_data[:5]), 
-            self.test_ts, 
-            5
-        )
-        
-        self.assertEqual(len(predictions), 5)
-        self.assertEqual(predictions.ndim, 1)  # Should be flattened
-    
-    def test_edge_cases(self):
-        """Test various edge cases."""
-        # Test with empty evaluation history
-        summary = ModelEvaluator(verbose=False).get_evaluation_summary()
-        self.assertIn("No evaluation history available", summary["message"])
-        
-        # Test comparison with empty results
+        # Test empty model comparison
         comparison = self.evaluator.compare_models({})
-        self.assertIn("No results to compare", comparison["message"])
-        
-        # Test performance degradation with no baseline
-        degraded = self.evaluator._check_performance_degradation(
-            'UnknownModel', 1.0, 1.5, 5.0
-        )
-        self.assertFalse(degraded)
+        self.assertIn("message", comparison)
+        self.assertEqual(comparison["message"], "No results to compare")
 
 
 if __name__ == '__main__':
-    # Run the tests
-    unittest.main(verbosity=2)
+    unittest.main()

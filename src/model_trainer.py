@@ -5,6 +5,8 @@ This module provides a trainer for DARTS models with CPU-only configuration,
 training/validation loss monitoring, and early stopping capabilities.
 """
 
+import pandas as pd
+import numpy as np
 from typing import Dict, Any, List, Optional, Tuple
 import warnings
 import time
@@ -14,13 +16,13 @@ from dataclasses import dataclass
 try:
     from darts import TimeSeries
     from darts.models.forecasting.forecasting_model import ForecastingModel
-    from pytorch_lightning.callbacks import Callback
+    from pytorch_lightning.loggers import CSVLogger
     DARTS_AVAILABLE = True
 except ImportError as e:
     print(f"Warning: DARTS not available: {e}")
     TimeSeries = Any
     ForecastingModel = Any
-    Callback = object  # Dummy class
+    CSVLogger = object # Dummy class
     DARTS_AVAILABLE = False
 
 
@@ -41,27 +43,6 @@ class TrainingResults:
 class ModelTrainingError(Exception):
     """Custom exception for model training errors."""
     pass
-
-
-class LossLogger(Callback):
-    """
-    PyTorch Lightning callback to log training and validation losses.
-    """
-    def __init__(self):
-        super().__init__()
-        self.train_loss = []
-        self.val_loss = []
-
-    def on_train_epoch_end(self, trainer, pl_module):
-        """Log training loss at the end of each training epoch."""
-        if 'train_loss' in trainer.callback_metrics:
-            self.train_loss.append(trainer.callback_metrics['train_loss'].item())
-
-    def on_validation_epoch_end(self, trainer, pl_module):
-        """Log validation loss at the end of each validation epoch."""
-        if not trainer.sanity_checking:  # Exclude sanity check run
-            if 'val_loss' in trainer.callback_metrics:
-                self.val_loss.append(trainer.callback_metrics['val_loss'].item())
 
 
 class ModelTrainer:
@@ -118,45 +99,59 @@ class ModelTrainer:
             raise ModelTrainingError("DARTS library is not available. Please install darts.")
         
         if self.verbose:
-            print(f"\n🚀 Starting training for {model_name}")
+            print(f"\nStarting training for {model_name}")
             print(f"   Training data: {len(train_ts)} points")
             print(f"   Validation data: {len(val_ts)} points")
         
+        original_epochs = None
         try:
             # Configure model for CPU training and add loss logger
-            loss_logger = self._configure_trainer(model)
+            logger = self._configure_trainer(model, model_name)
             
             # Override epochs if specified
             if self.max_epochs is not None and hasattr(model, 'n_epochs'):
                 original_epochs = model.n_epochs
                 model.n_epochs = self.max_epochs
                 if self.verbose:
-                    print(f"   Overriding epochs: {original_epochs} → {self.max_epochs}")
+                    print(f"   Overriding epochs: {original_epochs} -> {self.max_epochs}")
             
             # Start training
             start_time = time.time()
             model.fit(train_ts, val_series=val_ts)
             training_time = time.time() - start_time
             
-            # Extract training history from the logger
-            train_loss = loss_logger.train_loss
-            val_loss = loss_logger.val_loss
-            
+            # --- Read metrics from CSV logger ---
+            log_dir = logger.log_dir
+            metrics_path = f"{log_dir}/metrics.csv"
+            try:
+                metrics_df = pd.read_csv(metrics_path)
+                train_loss = metrics_df['train_loss'].dropna().tolist()
+                val_loss = metrics_df['val_loss'].dropna().tolist()
+            except (FileNotFoundError, KeyError):
+                train_loss = []
+                val_loss = []
+
+            # More reliable way to get epochs completed
+            epochs_completed = 0
+            if hasattr(model, 'trainer'):
+                epochs_completed = model.trainer.current_epoch
+            elif train_loss:
+                epochs_completed = len(train_loss)
+
             # Analyze training results
             final_train_loss = train_loss[-1] if train_loss else float('inf')
             final_val_loss = val_loss[-1] if val_loss else float('inf')
-            epochs_completed = len(train_loss)
             
             convergence_achieved = self._check_convergence(train_loss, val_loss)
             early_stopped = self._check_early_stopping(val_loss)
             
             if self.verbose:
-                print(f"   ✓ Training completed in {training_time:.2f}s")
-                print(f"   ✓ Epochs: {epochs_completed}")
-                print(f"   ✓ Final train loss: {final_train_loss:.6f}")
-                print(f"   ✓ Final val loss: {final_val_loss:.6f}")
-                print(f"   ✓ Convergence: {'Yes' if convergence_achieved else 'No'}")
-                print(f"   ✓ Early stopped: {'Yes' if early_stopped else 'No'}")
+                print(f"   V Training completed in {training_time:.2f}s")
+                print(f"   V Epochs: {epochs_completed}")
+                print(f"   V Final train loss: {final_train_loss:.6f}")
+                print(f"   V Final val loss: {final_val_loss:.6f}")
+                print(f"   V Convergence: {'Yes' if convergence_achieved else 'No'}")
+                print(f"   V Early stopped: {'Yes' if early_stopped else 'No'}")
             
             results = TrainingResults(
                 model_name=model_name,
@@ -176,20 +171,24 @@ class ModelTrainer:
         except Exception as e:
             error_msg = f"Failed to train {model_name}: {str(e)}"
             if self.verbose:
-                print(f"   ❌ {error_msg}")
+                print(f"   X {error_msg}")
             raise ModelTrainingError(error_msg) from e
+        finally:
+            if original_epochs is not None:
+                model.n_epochs = original_epochs
 
-    def _configure_trainer(self, model: ForecastingModel) -> LossLogger:
+    def _configure_trainer(self, model: ForecastingModel, model_name: str) -> CSVLogger:
         """
-        Configure model's pl_trainer_kwargs for CPU training and add loss logger.
+        Configure model's pl_trainer_kwargs for CPU training and add a CSV logger.
         
         Args:
             model: DARTS forecasting model to configure.
+            model_name: The name of the model, used for the logger.
             
         Returns:
-            LossLogger: The instance of the loss logger callback.
+            CSVLogger: The instance of the CSV logger.
         """
-        loss_logger = LossLogger()
+        logger = CSVLogger(save_dir="temp_logs", name=model_name)
         
         if not hasattr(model, 'pl_trainer_kwargs') or model.pl_trainer_kwargs is None:
             model.pl_trainer_kwargs = {}
@@ -200,20 +199,15 @@ class ModelTrainer:
             'devices': 1,
             'enable_progress_bar': self.verbose,
             'enable_model_summary': False,
+            'logger': logger
         })
         
-        # Add our loss logger to the callbacks
-        callbacks = model.pl_trainer_kwargs.get('callbacks', [])
-        if not any(isinstance(c, LossLogger) for c in callbacks):
-            callbacks.append(loss_logger)
-        model.pl_trainer_kwargs['callbacks'] = callbacks
-
         if hasattr(model, 'force_reset'):
             model.force_reset = True
         if hasattr(model, 'save_checkpoints'):
             model.save_checkpoints = False
             
-        return loss_logger
+        return logger
 
     def _check_convergence(self, train_loss: List[float], val_loss: List[float]) -> bool:
         """
@@ -253,3 +247,148 @@ class ModelTrainer:
                 return False # There was an improvement
         
         return True
+    
+    def train_multiple_models(self, 
+                            models: Dict[str, ForecastingModel], 
+                            train_ts: TimeSeries, 
+                            val_ts: TimeSeries) -> Dict[str, TrainingResults]:
+        """
+        Train multiple models and return results.
+        
+        Args:
+            models: Dictionary of model name to model instance
+            train_ts: Training TimeSeries data
+            val_ts: Validation TimeSeries data
+            
+        Returns:
+            Dict[str, TrainingResults]: Training results for each model
+        """
+        results = {}
+        failed_models = []
+        
+        if self.verbose:
+            print(f"\n🚀 Training {len(models)} models...")
+        
+        for model_name, model in models.items():
+            try:
+                result = self.train_model(model, train_ts, val_ts, model_name)
+                results[model_name] = result
+                
+            except Exception as e:
+                failed_models.append((model_name, str(e)))
+                warnings.warn(f"Failed to train {model_name}: {e}")
+                continue
+        
+        if self.verbose:
+            print(f"\n📊 Training Summary:")
+            print(f"   ✓ Successful: {len(results)}")
+            print(f"   ❌ Failed: {len(failed_models)}")
+            
+            if failed_models:
+                print(f"\n   Failed models:")
+                for model_name, error in failed_models:
+                    print(f"     - {model_name}: {error}")
+        
+        return results
+    
+    def get_training_summary(self) -> Dict[str, Any]:
+        """
+        Get summary of all training results.
+        
+        Returns:
+            Dict[str, Any]: Summary statistics
+        """
+        if not self.training_history:
+            return {"message": "No training history available"}
+        
+        summary = {
+            "total_models_trained": len(self.training_history),
+            "successful_models": [],
+            "converged_models": [],
+            "early_stopped_models": [],
+            "average_training_time": 0,
+            "average_final_val_loss": 0,
+            "best_model_by_val_loss": None
+        }
+        
+        training_times = []
+        val_losses = []
+        best_val_loss = float('inf')
+        
+        for model_name, results in self.training_history.items():
+            summary["successful_models"].append(model_name)
+            
+            if results.convergence_achieved:
+                summary["converged_models"].append(model_name)
+            
+            if results.early_stopped:
+                summary["early_stopped_models"].append(model_name)
+            
+            training_times.append(results.training_time)
+            val_losses.append(results.final_val_loss)
+            
+            if results.final_val_loss < best_val_loss:
+                best_val_loss = results.final_val_loss
+                summary["best_model_by_val_loss"] = model_name
+        
+        if training_times:
+            summary["average_training_time"] = np.mean(training_times)
+            summary["average_final_val_loss"] = np.mean(val_losses)
+        
+        return summary
+    
+    def validate_training_requirements(self, train_ts: TimeSeries, val_ts: TimeSeries) -> bool:
+        """
+        Validate that training data meets requirements.
+        
+        Args:
+            train_ts: Training TimeSeries
+            val_ts: Validation TimeSeries
+            
+        Returns:
+            bool: True if requirements are met
+            
+        Raises:
+            ModelTrainingError: If validation fails
+        """
+        try:
+            # Check minimum data requirements
+            min_train_length = 30  # Minimum for meaningful training
+            min_val_length = 10    # Minimum for validation
+            
+            if len(train_ts) < min_train_length:
+                raise ModelTrainingError(
+                    f"Training data too small: {len(train_ts)} points (minimum {min_train_length})"
+                )
+            
+            if len(val_ts) < min_val_length:
+                raise ModelTrainingError(
+                    f"Validation data too small: {len(val_ts)} points (minimum {min_val_length})"
+                )
+            
+            # Check for NaN values
+            try:
+                train_df = train_ts.pd_dataframe() if hasattr(train_ts, 'pd_dataframe') else train_ts.to_pandas()
+                val_df = val_ts.pd_dataframe() if hasattr(val_ts, 'pd_dataframe') else val_ts.to_pandas()
+                
+                if train_df.isnull().any().any():
+                    raise ModelTrainingError("Training data contains NaN values")
+                
+                if val_df.isnull().any().any():
+                    raise ModelTrainingError("Validation data contains NaN values")
+            except Exception:
+                # If we can't check for NaN values, skip this validation
+                pass
+            
+            # Check feature consistency
+            if len(train_ts.columns) != len(val_ts.columns):
+                raise ModelTrainingError(
+                    f"Feature count mismatch: train={len(train_ts.columns)}, val={len(val_ts.columns)}"
+                )
+            
+            return True
+            
+        except Exception as e:
+            if isinstance(e, ModelTrainingError):
+                raise
+            raise ModelTrainingError(f"Training validation failed: {e}") from e
